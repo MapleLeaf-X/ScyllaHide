@@ -80,6 +80,8 @@ enum server_dbg_notification_t
 
 	dbg_bpt_changed,     // Breakpoint has been changed
 
+	apply_settings,
+
 	inject_dll
 };
 

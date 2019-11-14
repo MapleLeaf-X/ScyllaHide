@@ -171,7 +171,7 @@ static void UpdateOptions(HWND hWnd, const scl::Settings *settings)
     CheckDlgButton(hWnd, IDC_AUTOSTARTSERVER, opts->idaAutoStartServer);
     SetDlgItemTextW(hWnd, IDC_SERVERPORT, opts->idaServerPort.c_str());
 
-#ifdef BUILD_IDA_64BIT
+#ifndef BUILD_IDA_64BIT
     EnableWindow(GetDlgItem(hWnd, IDC_AUTOSTARTSERVER), scl::IsWindows64());
 #else
     EnableWindow(GetDlgItem(hWnd, IDC_AUTOSTARTSERVER), FALSE);
@@ -632,10 +632,10 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             wstrNewProfileName.resize(lstrlenW(wstrNewProfileName.c_str()));
 
 #elif defined(__IDP__)
-            auto szNewProfileName = askstr(0, "", "New profile name?");
-            if (!szNewProfileName)
+            qstring szNewProfileName;
+            if (!ask_str(&szNewProfileName, 0, "New profile name?"))
                 break;
-            wstrNewProfileName = scl::wstr_conv().from_bytes(szNewProfileName);
+            wstrNewProfileName = scl::wstr_conv().from_bytes(szNewProfileName.c_str());
 
 #elif defined(X64DBG)
             std::string strNewProfileName;
@@ -670,8 +670,10 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             if (ProcessId)
             {
 #ifdef __IDP__
-#ifndef BUILD_IDA_64BIT
+#ifdef BUILD_IDA_64BIT
                 startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
+#else
+                SendSettingsToServer(ProcessId);
 #endif
 #else
                 startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
@@ -835,17 +837,11 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             {
                 if (scl::GetFileDialogW(DllPathForInjection, _countof(DllPathForInjection)))
                 {
-                    if (dbg->is_remote())
-                    {
-                        SendInjectToServer(ProcessId);
-                    }
-                    else
-                    {
-#ifndef BUILD_IDA_64BIT
-                        injectDll(ProcessId, DllPathForInjection);
+#ifdef BUILD_IDA_64BIT
+                    injectDll(ProcessId, DllPathForInjection);
+#else
+                    SendInjectToServer(ProcessId);
 #endif
-                    }
-
                 }
             }
             break;
@@ -857,7 +853,7 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
                 break;
 
             EndDialog(hDlg, NULL);
-            DialogBoxW(hinst, MAKEINTRESOURCE(IDD_ATTACH), (HWND)callui(ui_get_hwnd).vptr, &AttachProc);
+            DialogBoxW(hinst, MAKEINTRESOURCE(IDD_ATTACH), NULL /*(HWND)callui(ui_get_hwnd).vptr*/, &AttachProc);
             break;
         }
 
@@ -866,7 +862,8 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             if (HIWORD(wParam) != BN_CLICKED)
                 break;
 
-            scl::ShowAboutBox((HWND)callui(ui_get_hwnd).vptr);
+            //scl::ShowAboutBox((HWND)callui(ui_get_hwnd).vptr);
+            scl::ShowAboutBox(NULL);
             break;
         }
 #endif

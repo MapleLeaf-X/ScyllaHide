@@ -245,6 +245,8 @@ static void handleClient(SOCKET ClientSocket)
 
                 if (!bHooked)
                 {
+                    ReadNtApiInformation(&g_hdd);
+
                     bHooked = true;
                     startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
                 }
@@ -267,6 +269,14 @@ static void handleClient(SOCKET ClientSocket)
                 break;
             }
 
+            case apply_settings:
+            {
+                if(bHooked)
+                {
+                    startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
+                }
+                break;
+            }
             case inject_dll:
             {
                 if (!once)

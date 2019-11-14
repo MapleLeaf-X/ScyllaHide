@@ -5,10 +5,10 @@
 //for 64bit - p64
 #ifdef BUILD_IDA_64BIT
 #define __EA64__
-#pragma comment(lib, "x86_win_vc_64/ida.lib")
+#pragma comment(lib, "x64_win_vc_64/ida.lib")
 #else
 //for 32bit - plw
-#pragma comment(lib, "x86_win_vc_32/ida.lib")
+#pragma comment(lib, "x64_win_vc_32/ida.lib")
 #endif
 
 #include <Windows.h>
@@ -32,14 +32,14 @@ typedef void(__cdecl * t_AttachProcess)(DWORD dwPID);
 
 extern t_AttachProcess _AttachProcess;
 
-const WCHAR g_scyllaHideDllFilename[] = L"HookLibraryx86.dll";
-const WCHAR g_scyllaHidex64ServerFilename[] = L"ScyllaHideIDAServerx64.exe";
+const WCHAR g_scyllaHideDllFilename[] = L"HookLibraryx64.dll";
+const WCHAR g_scyllaHidex86ServerFilename[] = L"ScyllaHideIDAServerx86.exe";
 
 scl::Settings g_settings;
 scl::Logger g_log;
 std::wstring g_scyllaHideDllPath;
 std::wstring g_scyllaHideIniPath;
-std::wstring g_scyllaHidex64ServerPath;
+std::wstring g_scyllaHidex86ServerPath;
 
 HOOK_DLL_DATA g_hdd;
 
@@ -64,14 +64,14 @@ static void AttachProcess(DWORD dwPID)
     switch (res) {
     case -1:
     {
-        MessageBoxA((HWND)callui(ui_get_hwnd).vptr,
+        MessageBoxA(NULL, //(HWND)callui(ui_get_hwnd).vptr,
             "Can't attach to that process !",
             "ScyllaHide Plugin", MB_OK | MB_ICONERROR);
         break;
     }
     case -2:
     {
-        MessageBoxA((HWND)callui(ui_get_hwnd).vptr,
+        MessageBoxA(NULL, //(HWND)callui(ui_get_hwnd).vptr,
             "Can't find that PID !",
             "ScyllaHide Plugin", MB_OK | MB_ICONERROR);
         break;
@@ -102,7 +102,7 @@ static bool SetDebugPrivileges()
 }
 
 //callback for various debug events
-static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
+static ssize_t idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
 {
     switch (notif_code)
     {
@@ -129,7 +129,8 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
             // dbg->id DEBUGGER_ID_WINDBG -> 64bit and 32bit
             // dbg->id DEBUGGER_ID_X86_IA32_WIN32_USER -> 32bit
 
-            if (dbg->is_remote())
+#ifndef BUILD_IDA_64BIT
+            //if (dbg->is_remote())
             {
                 qstring hoststring;
                 char host[MAX_PATH] = { 0 };
@@ -142,13 +143,12 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
                 //msg("Host-String: %s\n", hoststring.c_str());
                 //msg("Host: %s\n", host);
 
-#ifdef BUILD_IDA_64BIT
                 //autostart server if necessary
                 if(g_settings.opts().idaAutoStartServer)
                 {
-                    if (!scl::FileExistsW(g_scyllaHidex64ServerPath.c_str()))
+                    if (!scl::FileExistsW(g_scyllaHidex86ServerPath.c_str()))
                     {
-                        g_log.LogError(L"Cannot find server executable %s\n", g_scyllaHidex64ServerPath.c_str());
+                        g_log.LogError(L"Cannot find server executable %s\n", g_scyllaHidex86ServerPath.c_str());
                     }
 
                     DWORD dwRunningStatus = 0;
@@ -169,7 +169,7 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
                         ZeroMemory(&ServerProcessInfo, sizeof(ServerProcessInfo));
 
                         WCHAR commandline[MAX_PATH*2] = {0};
-                        wcscpy(commandline, g_scyllaHidex64ServerPath.c_str());
+                        wcscpy(commandline, g_scyllaHidex86ServerPath.c_str());
                         wcscat(commandline, L" ");
                         wcscat(commandline, g_settings.opts().idaServerPort.c_str());
                         ServerStartupInfo.cb = sizeof(ServerStartupInfo);
@@ -183,7 +183,6 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
                         }
                     }
                 }
-#endif
                 if (ConnectToServer(host, port))
                 {
                     if (!SendEventToServer(notif_code, ProcessId))
@@ -196,26 +195,20 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
                     g_log.LogError(L"Cannot connect to host %s", host);
                 }
             }
-            else
-            {
-
-#ifndef BUILD_IDA_64BIT
-                if (!scl::IsWindows64() && !bHooked) // Only apply on native x86 OS, see dbg_library_unload below
-                {
-                    bHooked = true;
-                    startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
-                }
 #else
-                g_log.LogError(L"Error IDA_64BIT please contact ScyllaHide developers!");
-#endif
+            if(scl::IsWindows64() && !bHooked) // Only apply on native x64 OS, see dbg_library_unload below
+            {
+                bHooked = true;
+                startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
             }
+#endif
         }
     }
     break;
 
     case dbg_process_exit:
     {
-        if (!isAttach && dbg->is_remote())
+        if (!isAttach/* && dbg->is_remote()*/)
         {
             if (!SendEventToServer(notif_code, ProcessId))
             {
@@ -232,7 +225,7 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
     case dbg_library_load:
     {
 
-        if (!isAttach && dbg->is_remote())
+        if (!isAttach/* && dbg->is_remote()*/)
         {
             if (!SendEventToServer(notif_code, ProcessId))
             {
@@ -241,7 +234,7 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
         }
         else if (!isAttach)
         {
-#ifndef BUILD_IDA_64BIT
+#ifdef BUILD_IDA_64BIT
             if (bHooked)
             {
                 startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
@@ -252,7 +245,7 @@ static int idaapi debug_mainloop(void *user_data, int notif_code, va_list va)
     }
     break;
 
-#ifndef BUILD_IDA_64BIT
+#ifdef BUILD_IDA_64BIT
     case dbg_library_unload:
     {
         if (scl::IsWindows64() && !bHooked)
@@ -291,9 +284,10 @@ static void idaapi IDAP_term(void)
 }
 
 //called when user clicks in plugin menu or presses hotkey
-static void idaapi IDAP_run(int arg)
+static bool idaapi IDAP_run(size_t arg)
 {
-    DialogBoxW(hinst, MAKEINTRESOURCE(IDD_OPTIONS), (HWND)callui(ui_get_hwnd).vptr, &OptionsDlgProc);
+    DialogBoxW(hinst, MAKEINTRESOURCE(IDD_OPTIONS), NULL /*(HWND)callui(ui_get_hwnd).vptr*/, &OptionsDlgProc);
+    return true;
 }
 
 //init the plugin
@@ -358,7 +352,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD dwReason, LPVOID lpReserved)
 
         g_scyllaHideDllPath = wstrPath + g_scyllaHideDllFilename;
         g_scyllaHideIniPath = wstrPath + scl::Settings::kFileName;
-        g_scyllaHidex64ServerPath = wstrPath + g_scyllaHidex64ServerFilename;
+        g_scyllaHidex86ServerPath = wstrPath + g_scyllaHidex86ServerFilename;
 
         auto log_file = wstrPath + scl::Logger::kFileName;
         g_log.SetLogFile(log_file.c_str());

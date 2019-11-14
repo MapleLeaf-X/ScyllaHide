@@ -30,6 +30,11 @@ bool StartWinsock()
 	return isWinsockUp;
 }
 
+bool SendSettingsToServer(unsigned long ProcessId)
+{
+	return SendEventToServer(apply_settings, ProcessId);
+}
+
 bool SendInjectToServer(unsigned long ProcessId)
 {
 	return SendEventToServer(inject_dll, ProcessId);
