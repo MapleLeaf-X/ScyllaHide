@@ -1,0 +1,930 @@
+LIBRARY        ollydbg.exe
+DATA           MULTIPLE
+EXPORTS
+  __GetExceptDLLinfo                  @1
+  _Error                              @2
+  _Conderror                          @3
+  _Condyesno                          @4
+  _Stringfromini                      @5
+  _Filefromini                        @6
+  _Getfromini                         @7
+  _Writetoini                         @8
+  _Filetoini                          @9
+  _Deleteinisection                   @10
+  _Getfromsettings                    @11
+  _Addtosettings                      @12
+  _IstextA                            @13
+  _IstextW                            @14
+  _IsrareA                            @15
+  _Replacegraphs                      @16
+  _Unicodebuffertoascii               @17
+  _Unicodetoascii                     @18
+  _Asciitounicode                     @19
+  _Unicodetoutf                       @20
+  _Utftounicode                       @21
+  _Getmbstringinfo                    @22
+  _Getmbcharlength                    @23
+  _Iszero                             @24
+  _Guidtotext                         @25
+  _Swprintf                           @26
+  _Memalloc                           @27
+  _Memfree                            @28
+  _Mempurge                           @29
+  _Memdouble                          @30
+  _Virtalloc                          @31
+  _Virtfree                           @32
+  _Broadcast                          @33
+  _Fnsplit                            @34
+  _Fnmerge                            @35
+  _Listalternatedatastreams           @36
+  _Browsefilename                     @37
+  _Browsedirectory                    @38
+  _Relativizepath                     @39
+  _Absolutizepath                     @40
+  _Confirmoverwrite                   @41
+  _Labeladdress                       @42
+  _Simpleaddress                      @43
+  _Heapsort                           @44
+  _Heapsortex                         @45
+  _Readfile                           @46
+  _Devicenametodosname                @47
+  _Filenamefromhandle                 @48
+  _Quicktimerstart                    @49
+  _Quicktimerstop                     @50
+  _Quicktimerflush                    @51
+  _Info                               @52
+  _Message                            @53
+  _Tempinfo                           @54
+  _Flash                              @55
+  _Progress                           @56
+  _Moveprogress                       @57
+  _Setstatus                          @58
+  _Getmonitorrect                     @59
+  _Sunkenframe                        @60
+  _Findstockobject                    @61
+  _Findmodule                         @62
+  _Findmodulebyname                   @63
+  _Findmainmodule                     @64
+  _Issystem                           @65
+  _Findfixup                          @66
+  _Findfileoffset                     @67
+  _Decoderange                        @68
+  _Getexeversion                      @69
+  _Getexportfrommemory                @70
+  _Destroysorteddata                  @71
+  _Createsorteddata                   @72
+  _Deletesorteddata                   @73
+  _Deletesorteddatarange              @74
+  _Addsorteddata                      @75
+  _Replacesorteddatarange             @76
+  _Renumeratesorteddata               @77
+  _Confirmsorteddata                  @78
+  _Deletenonconfirmedsorteddata       @79
+  _Unmarknewsorteddata                @80
+  _Findsorteddata                     @81
+  _Findsorteddatarange                @82
+  _Findsortedindexrange               @83
+  _Getsortedbyindex                   @84
+  _Sortsorteddata                     @85
+  _Getsortedbyselection               @86
+  _Issortedinit                       @87
+  _Redrawlist                         @88
+  _Addtolist                          @89
+  _Getcharacterwidth                  @90
+  _Defaultbar                         @91
+  _Linecount                          @92
+  _Gettabletext                       @93
+  _Gettableselectionxy                @94
+  _Maketableareavisible               @95
+  _Movetableselection                 @96
+  _Settableselection                  @97
+  _Removetableselection               @98
+  _Updatetable                        @99
+  _Delayedtableredraw                 @100
+  _Setautoupdate                      @101
+  _Processwmmousewheel                @102
+  _Createottablewindow                @103
+  _Copytableselection                 @104
+  _Copywholetable                     @105
+  _Createtablewindow                  @106
+  _Activatetablewindow                @107
+  _Createtablechild                   @108
+  _Gettablebywindow                   @109
+  _Callmenufunction                   @110
+  _Getcontrolpos                      @111
+  _Movecontrol                        @112
+  _Findcontrol                        @113
+  _Defaultactions                     @114
+  _Addstringtocombolist               @115
+  _Preparedialog                      @116
+  _Endotdialog                        @117
+  _Getregister                        @118
+  _Getinteger                         @119
+  _Getdword                           @120
+  _Getlasterrorcode                   @121
+  _Getaddressrange                    @122
+  _Getexceptionrange                  @123
+  _Getstructuretype                   @124
+  _Getrepstructuretype                @125
+  _Getfpureg                          @126
+  _Get3dnow                           @127
+  _Getfloat                           @128
+  _Getmmx                             @129
+  _Getsse                             @130
+  _Getstring                          @131
+  _Getdwordexpression                 @132
+  _Getintexpression                   @133
+  _Getgotoexpression                  @134
+  _Asmindump                          @135
+  _Getasmsearchmodel                  @136
+  _Getseqsearchmodel                  @137
+  _Binaryedit                         @138
+  _Getpredefinedtypebyindex           @139
+  _Getindexbypredefinedtype           @140
+  _Condbreakpoint                     @141
+  _Condlogbreakpoint                  @142
+  _Membreakpoint                      @143
+  _Memlogbreakpoint                   @144
+  _Hardbreakpoint                     @145
+  _Hardlogbreakpoint                  @146
+  _Setrtcond                          @147
+  _Setrtprot                          @148
+  _Browsecodelocations                @149
+  _Fillcombowithcplist                @150
+  _Fillmenuwithcplist                 @151
+  _Insertdata                         @152
+  _Finddata                           @153
+  _Finddataptr                        @154
+  _Startnextdata                      @155
+  _Findnextdata                       @156
+  _Startnextdatalist                  @157
+  _Findnextdatalist                   @158
+  _Isdataavailable                    @159
+  _Isdatainrange                      @160
+  _Deletedatarange                    @161
+  _Deletedatarangelist                @162
+  _Mergequickdata                     @163
+  _Quickinsertdata                    @164
+  _DemanglenameW                      @165
+  _InsertnameW                        @166
+  _QuickinsertnameW                   @167
+  _FindnameW                          @168
+  _FindnextnameW                      @169
+  _Startnextnamelist                  @170
+  _FindnextnamelistW                  @171
+  _Findlabel                          @172
+  _FindaddressW                       @173
+  _Destroysimpledata                  @174
+  _Createsimpledata                   @175
+  _Addsimpledata                      @176
+  _Sortsimpledata                     @177
+  _Findsimpledata                     @178
+  _Getsimpledataindexbyaddr           @179
+  _Getsimpledatabyindex               @180
+  _Deletesimpledatarange              @181
+  _Byteregtodwordreg                  @182
+  _Disassembleforward                 @183
+  _Disassembleback                    @184
+  _Commentcharacter                   @185
+  _Printfloat4                        @186
+  _Printfloat8                        @187
+  _Printfloat10                       @188
+  _Printmmx                           @189
+  _Nameoffloat                        @190
+  _Disasm                             @191
+  _Cmdinfo                            @192
+  _Suspendallthreads                  @193
+  _Resumeallthreads                   @194
+  _Getlasterror                       @195
+  _Getselectorinfo                    @196
+  _Pauseprocess                       @197
+  _Closeprocess                       @198
+  _Detachprocess                      @199
+  _Runthread                          @200
+  _Run                                @201
+  _Checkfordebugevent                 @202
+  _Flushmemorycache                   @203
+  _Readmemory                         @204
+  _Readmemoryex                       @205
+  _Writememory                        @206
+  _Findmemory                         @207
+  _Finddecode                         @208
+  _Guardmemory                        @209
+  _Listmemory                         @210
+  _Copymemoryhex                      @211
+  _Pastememoryhex                     @212
+  _Editmemory                         @213
+  _Findthread                         @214
+  _Findthreadbyordinal                @215
+  _Threadregisters                    @216
+  _Decodethreadname                   @217
+  _Removeanalysis                     @218
+  _Getpackednetint                    @219
+  _Maybecommand                       @220
+  _Followcall                         @221
+  _Followjump                         @222
+  _Addjump                            @223
+  _Sortjumpdata                       @224
+  _Findjumpfrom                       @225
+  _Findlocaljumpsto                   @226
+  _Findlocaljumpscallsto              @227
+  _Arelocaljumpscallstorange          @228
+  _Findglobalcallsto                  @229
+  _Findglobaljumpscallsto             @230
+  _Initset                            @231
+  _Fullrange                          @232
+  _Emptyrange                         @233
+  _Getsetcount                        @234
+  _Getrangecount                      @235
+  _Isinset                            @236
+  _Getrangebymember                   @237
+  _Getrangebyindex                    @238
+  _Addrange                           @239
+  _Removerange                        @240
+  _Createframewindow                  @241
+  _Updateframe                        @242
+  _Getactiveframe                     @243
+  _Gettabcount                        @244
+  _Setactivetab                       @245
+  _Updatetabs                         @246
+  _Createtabwindow                    @247
+  _Getactivetab                       @248
+  _Redrawcpudisasm                    @249
+  _Redrawcpureg                       @250
+  _Getcputhreadid                     @251
+  _Getcpuruntracebackstep             @252
+  _Getcpudisasmdump                   @253
+  _Getcpudisasmselection              @254
+  _Getcpudisasmtable                  @255
+  _Getcpudumpdump                     @256
+  _Getcpustackdump                    @257
+  _Addtohistory                       @258
+  _Walkhistory                        @259
+  _Checkhistory                       @260
+  _Setcpu                             @261
+  _Getconstantbyname                  @262
+  _Getconstantbyvalue                 @263
+  _Fillcombowithgroup                 @264
+  _Getrawdata                         @265
+  _Substitutehkeyprefix               @266
+  _Decodeknownbyname                  @267
+  _Decodeknownbyaddr                  @268
+  _Isnoreturn                         @269
+  _Decodeargument                     @270
+  _Decodetype                         @271
+  _Fillcombowithstruct                @272
+  _Getstructureitemcount              @273
+  _Findstructureitembyoffset          @274
+  _Decodestructure                    @275
+  _Getstructureitemvalue              @276
+  _Skipspaces                         @277
+  _Scan                               @278
+  _Optostring                         @279
+  _Destroynesteddata                  @280
+  _Createnesteddata                   @281
+  _Addnesteddata                      @282
+  _Deletenestedrange                  @283
+  _Getnestingpattern                  @284
+  _Getnestingdepth                    @285
+  _Findnesteddata                     @286
+  _Nesteddatatoudd                    @287
+  _Uddtonesteddata                    @288
+  _Stringtotext                       @289
+  _Isstring                           @290
+  _Squeezename                        @291
+  _Uncapitalize                       @292
+  _Decoderelativeoffset               @293
+  _Decodeaddress                      @294
+  _Decodearglocal                     @295
+  _Getanalysercomment                 @296
+  _Getswitchcomment                   @297
+  _Getloopcomment                     @298
+  _Getproccomment                     @299
+  _Commentaddress                     @300
+  _Assembleallforms                   @301
+  _Assembleex                         @302
+  _Assemble                           @303
+  _Executecommand                     @304
+  _Checkcondition                     @305
+  _Setcondition                       @306
+  _Registermodifiedbyuser             @307
+  _Removeint3breakpoint               @308
+  _Setint3breakpoint                  @309
+  _Enableint3breakpoint               @310
+  _Confirmint3breakpoint              @311
+  _Confirmhardwarebreakpoint          @312
+  _Confirmint3breakpointlist          @313
+  _Wipebreakpointrange                @314
+  _Cexpression                        @315
+  _Exprcount                          @316
+  _Eexpression                        @317
+  _Expression                         @318
+  _Fastexpression                     @319
+  _Comparecommand                     @320
+  _Comparesequence                    @321
+  _Compress                           @322
+  _Getoriginaldatasize                @323
+  _Decompress                         @324
+  _Savetaggedrecord                   @325
+  _Savepackedrecord                   @326
+  _Createtaggedfile                   @327
+  _Finalizetaggedfile                 @328
+  _Gettaggedrecordsize                @329
+  _Gettaggedfiledata                  @330
+  _Closetaggedfile                    @331
+  _Opentaggedfile                     @332
+  _Getmodulestring                    @333
+  _Isretaddr                          @334
+  _Findretaddrdata                    @335
+  _Setdumptype                        @336
+  _Dumpback                           @337
+  _Dumpforward                        @338
+  _Getmbdumpaddress                   @339
+  _Getmbdumpposition                  @340
+  _Scrolldumpwindow                   @341
+  _Alignselection                     @342
+  _Getproclimits                      @343
+  _Getextproclimits                   @344
+  _Newdumpselection                   @345
+  _Ensurememorybackup                 @346
+  _Backupusercode                     @347
+  _Copydumpselection                  @348
+  _Findfiledump                       @349
+  _Createdumpwindow                   @350
+  _Createdatadumpwindow               @351
+  _Embeddumpwindow                    @352
+  _Addprotocolrange                   @353
+  _Getruntrace                        @354
+  _Findruntracerecord                 @355
+  _Removemembreakpoint                @356
+  _Setmembreakpoint                   @357
+  _Enablemembreakpoint                @358
+  _Removehardbreakpoint               @359
+  _Sethardbreakpoint                  @360
+  _Enablehardbreakpoint               @361
+  _Findfreehardbreakslot              @362
+  _Findsource                         @363
+  _Getsourceline                      @364
+  _Showsourcecode                     @365
+  _Ndisasm                            @366
+  _Getguidname                        @367
+  _Isguid                             @368
+  _Pluginsaverecord                   @369
+  _Pluginpackedrecord                 @370
+  _Pluginmodulechanged                @371
+  _Plugingetuniquedatatype            @372
+  _Plugintempbreakpoint               @373
+  _Pluginshowoptions                  @374
+  _T                                  @375
+  ___CPPdebugHook                     @376     DATA
+  Error                               @377
+  Conderror                           @378
+  Condyesno                           @379
+  Getfromini                          @380
+  Writetoini                          @381
+  Info                                @382
+  Message                             @383
+  Tempinfo                            @384
+  Flash                               @385
+  Progress                            @386
+  Addtolist                           @387
+  Swprintf                            @388
+  Absolutizepath                      @389
+  Activatetablewindow                 @390
+  Addjump                             @391
+  Addnesteddata                       @392
+  Addprotocolrange                    @393
+  Addrange                            @394
+  Addsimpledata                       @395
+  Addsorteddata                       @396
+  Addstringtocombolist                @397
+  Addtohistory                        @398
+  Addtosettings                       @399
+  Alignselection                      @400
+  Arelocaljumpscallstorange           @401
+  Asciitounicode                      @402
+  Asmindump                           @403
+  Assemble                            @404
+  Assembleex                          @405
+  Binaryedit                          @406
+  Assembleallforms                    @407
+  Backupusercode                      @408
+  Broadcast                           @409
+  Browsecodelocations                 @410
+  Browsedirectory                     @411
+  Browsefilename                      @412
+  Byteregtodwordreg                   @413
+  Callmenufunction                    @414
+  Cexpression                         @415
+  Checkcondition                      @416
+  Checkfordebugevent                  @417
+  Checkhistory                        @418
+  Closeprocess                        @419
+  Closetaggedfile                     @420
+  Cmdinfo                             @421
+  Commentaddress                      @422
+  Commentcharacter                    @423
+  Comparecommand                      @424
+  Comparesequence                     @425
+  Compress                            @426
+  Condbreakpoint                      @427
+  Condlogbreakpoint                   @428
+  Confirmhardwarebreakpoint           @429
+  Confirmint3breakpoint               @430
+  Disasm                              @431
+  Confirmint3breakpointlist           @432
+  Confirmoverwrite                    @433
+  Confirmsorteddata                   @434
+  Copydumpselection                   @435
+  Copymemoryhex                       @436
+  Copytableselection                  @437
+  Copywholetable                      @438
+  Createdatadumpwindow                @439
+  Createdumpwindow                    @440
+  Createframewindow                   @441
+  Createnesteddata                    @442
+  Createottablewindow                 @443
+  Createsimpledata                    @444
+  Createsorteddata                    @445
+  Createtablechild                    @446
+  Createtablewindow                   @447
+  Createtabwindow                     @448
+  Createtaggedfile                    @449
+  Decodeaddress                       @450
+  Decodearglocal                      @451
+  Decodeargument                      @452
+  Decodeknownbyaddr                   @453
+  Decodetype                          @454
+  Decodeknownbyname                   @455
+  Decoderange                         @456
+  Decoderelativeoffset                @457
+  Decodestructure                     @458
+  Decodethreadname                    @459
+  Decompress                          @460
+  Defaultactions                      @461
+  Defaultbar                          @462
+  Delayedtableredraw                  @463
+  Deletedatarange                     @464
+  Deletedatarangelist                 @465
+  Deleteinisection                    @466
+  Deletenestedrange                   @467
+  Deletenonconfirmedsorteddata        @468
+  Deletesimpledatarange               @469
+  Deletesorteddata                    @470
+  Deletesorteddatarange               @471
+  DemanglenameW                       @472
+  Destroynesteddata                   @473
+  Destroysimpledata                   @474
+  Destroysorteddata                   @475
+  Detachprocess                       @476
+  Dumpback                            @477
+  Devicenametodosname                 @478
+  Disassembleback                     @479
+  Disassembleforward                  @480
+  Dumpforward                         @481
+  Editmemory                          @482
+  Eexpression                         @483
+  Embeddumpwindow                     @484
+  Emptyrange                          @485
+  Enablehardbreakpoint                @486
+  Enableint3breakpoint                @487
+  Enablemembreakpoint                 @488
+  Endotdialog                         @489
+  Ensurememorybackup                  @490
+  Executecommand                      @491
+  Exprcount                           @492
+  Expression                          @493
+  Fastexpression                      @494
+  Filefromini                         @495
+  Filenamefromhandle                  @496
+  Filetoini                           @497
+  Fillcombowithcplist                 @498
+  Fillcombowithgroup                  @499
+  Fillcombowithstruct                 @500
+  Fillmenuwithcplist                  @501
+  Run                                 @502
+  Finalizetaggedfile                  @503
+  FindaddressW                        @504
+  Findcontrol                         @505
+  Finddata                            @506
+  Finddataptr                         @507
+  Finddecode                          @508
+  Findfiledump                        @509
+  Findfileoffset                      @510
+  Findfixup                           @511
+  Findfreehardbreakslot               @512
+  Findglobalcallsto                   @513
+  Findglobaljumpscallsto              @514
+  Findjumpfrom                        @515
+  Findlabel                           @516
+  Findlocaljumpscallsto               @517
+  Findlocaljumpsto                    @518
+  Findmainmodule                      @519
+  Findmemory                          @520
+  Findmodule                          @521
+  Findmodulebyname                    @522
+  FindnameW                           @523
+  Findnesteddata                      @524
+  Findnextdata                        @525
+  Findnextdatalist                    @526
+  FindnextnameW                       @527
+  FindnextnamelistW                   @528
+  Findretaddrdata                     @529
+  Findruntracerecord                  @530
+  Findsimpledata                      @531
+  Findsorteddata                      @532
+  Findsorteddatarange                 @533
+  Findsortedindexrange                @534
+  Findsource                          @535
+  Findstockobject                     @536
+  Findstructureitembyoffset           @537
+  Findthread                          @538
+  Findthreadbyordinal                 @539
+  Flushmemorycache                    @540
+  Fnmerge                             @541
+  Fnsplit                             @542
+  Followcall                          @543
+  Followjump                          @544
+  Fullrange                           @545
+  Get3dnow                            @546
+  Getactiveframe                      @547
+  Getactivetab                        @548
+  Getaddressrange                     @549
+  Getanalysercomment                  @550
+  Getasmsearchmodel                   @551
+  Getcharacterwidth                   @552
+  Getconstantbyname                   @553
+  Getconstantbyvalue                  @554
+  Getcontrolpos                       @555
+  Getcpudisasmdump                    @556
+  Getcpudisasmselection               @557
+  Getcpudisasmtable                   @558
+  Getcpudumpdump                      @559
+  Getcpuruntracebackstep              @560
+  Getcpustackdump                     @561
+  Getcputhreadid                      @562
+  Getdword                            @563
+  Getdwordexpression                  @564
+  Getexceptionrange                   @565
+  Getexeversion                       @566
+  Getexportfrommemory                 @567
+  Getextproclimits                    @568
+  Getfloat                            @569
+  Getfpureg                           @570
+  Getfromsettings                     @571
+  Getgotoexpression                   @572
+  Getguidname                         @573
+  Getindexbypredefinedtype            @574
+  Getinteger                          @575
+  Getintexpression                    @576
+  Getlasterror                        @577
+  Getlasterrorcode                    @578
+  Getloopcomment                      @579
+  Getmbcharlength                     @580
+  Getmbdumpaddress                    @581
+  Getmbdumpposition                   @582
+  Getmbstringinfo                     @583
+  Getmmx                              @584
+  Getmodulestring                     @585
+  Getmonitorrect                      @586
+  Getnestingdepth                     @587
+  Getnestingpattern                   @588
+  Getoriginaldatasize                 @589
+  Getpackednetint                     @590
+  Getpredefinedtypebyindex            @591
+  Getproccomment                      @592
+  Getproclimits                       @593
+  Getrangebyindex                     @594
+  Getrangebymember                    @595
+  Getrangecount                       @596
+  Getrawdata                          @597
+  Getregister                         @598
+  Getrepstructuretype                 @599
+  Getruntrace                         @600
+  Getseqsearchmodel                   @601
+  _StrlenA                            @602
+  Getsetcount                         @603
+  Getsimpledatabyindex                @604
+  Getsimpledataindexbyaddr            @605
+  Getsortedbyindex                    @606
+  Getsortedbyselection                @607
+  Getsourceline                       @608
+  Getsse                              @609
+  Getstring                           @610
+  Getstructureitemcount               @611
+  Getstructureitemvalue               @612
+  Getstructuretype                    @613
+  Getswitchcomment                    @614
+  Gettabcount                         @615
+  Gettableselectionxy                 @616
+  Gettabletext                        @617
+  Gettaggedfiledata                   @618
+  Gettaggedrecordsize                 @619
+  Guardmemory                         @620
+  Guidtotext                          @621
+  Hardbreakpoint                      @622
+  Hardlogbreakpoint                   @623
+  Heapsort                            @624
+  Heapsortex                          @625
+  Initset                             @626
+  Insertdata                          @627
+  InsertnameW                         @628
+  Isdataavailable                     @629
+  Isdatainrange                       @630
+  Isguid                              @631
+  Isinset                             @632
+  Isnoreturn                          @633
+  IsrareA                             @634
+  Isretaddr                           @635
+  Issortedinit                        @636
+  Isstring                            @637
+  Issystem                            @638
+  IstextA                             @639
+  IstextW                             @640
+  Iszero                              @641
+  Labeladdress                        @642
+  Linecount                           @643
+  Listalternatedatastreams            @644
+  Listmemory                          @645
+  Maketableareavisible                @646
+  Maybecommand                        @647
+  Memalloc                            @648
+  Membreakpoint                       @649
+  Memdouble                           @650
+  Memfree                             @651
+  Memlogbreakpoint                    @652
+  Mempurge                            @653
+  Mergequickdata                      @654
+  Movecontrol                         @655
+  Moveprogress                        @656
+  Movetableselection                  @657
+  Nameoffloat                         @658
+  Ndisasm                             @659
+  Nesteddatatoudd                     @660
+  Newdumpselection                    @661
+  Opentaggedfile                      @662
+  Optostring                          @663
+  Pastememoryhex                      @664
+  Pauseprocess                        @665
+  Plugingetuniquedatatype             @666
+  Pluginmodulechanged                 @667
+  Pluginpackedrecord                  @668
+  Pluginsaverecord                    @669
+  Pluginshowoptions                   @670
+  Plugintempbreakpoint                @671
+  Preparedialog                       @672
+  Printfloat10                        @673
+  Printfloat4                         @674
+  Printfloat8                         @675
+  Printmmx                            @676
+  Processwmmousewheel                 @677
+  Quickinsertdata                     @678
+  QuickinsertnameW                    @679
+  Quicktimerflush                     @680
+  Quicktimerstart                     @681
+  Readfile                            @682
+  Quicktimerstop                      @683
+  Readmemory                          @684
+  Readmemoryex                        @685
+  Redrawcpudisasm                     @686
+  Redrawcpureg                        @687
+  Redrawlist                          @688
+  Registermodifiedbyuser              @689
+  Relativizepath                      @690
+  Removeanalysis                      @691
+  Removehardbreakpoint                @692
+  Removeint3breakpoint                @693
+  Removemembreakpoint                 @694
+  Removerange                         @695
+  Removetableselection                @696
+  Renumeratesorteddata                @697
+  Replacegraphs                       @698
+  Replacesorteddatarange              @699
+  Resumeallthreads                    @700
+  Runthread                           @701
+  Savepackedrecord                    @702
+  Savetaggedrecord                    @703
+  Scan                                @704
+  Scrolldumpwindow                    @705
+  Setactivetab                        @706
+  _StrlenW                            @707
+  Setautoupdate                       @708
+  Setcondition                        @709
+  Setcpu                              @710
+  Setdumptype                         @711
+  Sethardbreakpoint                   @712
+  Setint3breakpoint                   @713
+  Setmembreakpoint                    @714
+  Setrtcond                           @715
+  Setrtprot                           @716
+  Setstatus                           @717
+  Settableselection                   @718
+  Showsourcecode                      @719
+  Simpleaddress                       @720
+  Skipspaces                          @721
+  Sortjumpdata                        @722
+  Sortsimpledata                      @723
+  Sortsorteddata                      @724
+  Squeezename                         @725
+  Startnextdata                       @726
+  Startnextdatalist                   @727
+  Startnextnamelist                   @728
+  Stringfromini                       @729
+  Stringtotext                        @730
+  Substitutehkeyprefix                @731
+  Sunkenframe                         @732
+  Suspendallthreads                   @733
+  _StrcopyA                           @734
+  Threadregisters                     @735
+  Uddtonesteddata                     @736
+  Uncapitalize                        @737
+  Unicodebuffertoascii                @738
+  Unicodetoascii                      @739
+  Unicodetoutf                        @740
+  Unmarknewsorteddata                 @741
+  Updateframe                         @742
+  Updatetable                         @743
+  Updatetabs                          @744
+  Utftounicode                        @745
+  Virtalloc                           @746
+  Virtfree                            @747
+  Walkhistory                         @748
+  Wipebreakpointrange                 @749
+  Writememory                         @750
+  StrcopyA                            @751
+  _StrcopyW                           @752
+  StrcopyW                            @753
+  StrlenA                             @754
+  StrlenW                             @755
+  _HexprintA                          @756
+  HexprintA                           @757
+  _HexprintW                          @758
+  HexprintW                           @759
+  _Hexprint4A                         @760
+  Hexprint4A                          @761
+  _Hexprint4W                         @762
+  Hexprint4W                          @763
+  _Hexprint8A                         @764
+  Hexprint8A                          @765
+  _Hexprint8W                         @766
+  Hexprint8W                          @767
+  _SignedhexA                         @768
+  SignedhexA                          @769
+  _SignedhexW                         @770
+  SignedhexW                          @771
+  _Swapmem                            @772
+  Swapmem                             @773
+  _HexdumpA                           @774
+  HexdumpA                            @775
+  _HexdumpW                           @776
+  HexdumpW                            @777
+  _Bitcount                           @778
+  Bitcount                            @779
+  _bincmd                             @780     DATA
+  bincmd                              @781     DATA
+  _regname                            @782     DATA
+  regname                             @783     DATA
+  _regname64                          @784     DATA
+  regname64                           @785     DATA
+  _segname                            @786     DATA
+  segname                             @787     DATA
+  _fpuname                            @788     DATA
+  fpuname                             @789     DATA
+  _mmxname                            @790     DATA
+  mmxname                             @791     DATA
+  _ssename                            @792     DATA
+  ssename                             @793     DATA
+  _crname                             @794     DATA
+  crname                              @795     DATA
+  _drname                             @796     DATA
+  drname                              @797     DATA
+  _sizename                           @798     DATA
+  sizename                            @799     DATA
+  _sizekey                            @800     DATA
+  sizekey                             @801     DATA
+  _sizeatt                            @802     DATA
+  sizeatt                             @803     DATA
+  _ollyfile                           @804     DATA
+  ollyfile                            @805     DATA
+  _ollydir                            @806     DATA
+  ollydir                             @807     DATA
+  _systemdir                          @808     DATA
+  systemdir                           @809     DATA
+  _plugindir                          @810     DATA
+  plugindir                           @811     DATA
+  _hollyinst                          @812     DATA
+  hollyinst                           @813     DATA
+  _hwollymain                         @814     DATA
+  hwollymain                          @815     DATA
+  _hwclient                           @816     DATA
+  hwclient                            @817     DATA
+  _ottable                            @818     DATA
+  ottable                             @819     DATA
+  _cpufeatures                        @820     DATA
+  cpufeatures                         @821     DATA
+  _ischild                            @822     DATA
+  ischild                             @823     DATA
+  _asciicodepage                      @824     DATA
+  asciicodepage                       @825     DATA
+  _mbcscodepage                       @826     DATA
+  mbcscodepage                        @827     DATA
+  _tracefile                          @828     DATA
+  tracefile                           @829     DATA
+  _font                               @830     DATA
+  font                                @831     DATA
+  _sysfont                            @832     DATA
+  sysfont                             @833     DATA
+  _titlefont                          @834     DATA
+  titlefont                           @835     DATA
+  _fixfont                            @836     DATA
+  fixfont                             @837     DATA
+  _color                              @838     DATA
+  color                               @839     DATA
+  _scheme                             @840     DATA
+  scheme                              @841     DATA
+  _hilite                             @842     DATA
+  hilite                              @843     DATA
+  _executable                         @844     DATA
+  executable                          @845     DATA
+  _arguments                          @846     DATA
+  arguments                           @847     DATA
+  _netdbg                             @848     DATA
+  netdbg                              @849     DATA
+  _rundll                             @850     DATA
+  rundll                              @851     DATA
+  _process                            @852     DATA
+  _processid                          @853     DATA
+  process                             @854     DATA
+  processid                           @855     DATA
+  _mainthreadid                       @856     DATA
+  mainthreadid                        @857     DATA
+  _run                                @858     DATA
+  run                                 @859     DATA
+  _skipsystembp                       @860     DATA
+  skipsystembp                        @861     DATA
+  _debugbreak                         @862     DATA
+  debugbreak                          @863     DATA
+  _dbgbreakpoint                      @864     DATA
+  dbgbreakpoint                       @865     DATA
+  _kiuserexcept                       @866     DATA
+  kiuserexcept                        @867     DATA
+  _zwcontinue                         @868     DATA
+  zwcontinue                          @869     DATA
+  _uefilter                           @870     DATA
+  uefilter                            @871     DATA
+  _ntqueryinfo                        @872     DATA
+  ntqueryinfo                         @873     DATA
+  _corexemain                         @874     DATA
+  corexemain                          @875     DATA
+  _peblock                            @876     DATA
+  peblock                             @877     DATA
+  _kusershareddata                    @878     DATA
+  kusershareddata                     @879     DATA
+  _userspacelimit                     @880     DATA
+  userspacelimit                      @881     DATA
+  _rtcond                             @882     DATA
+  rtcond                              @883     DATA
+  _rtprot                             @884     DATA
+  rtprot                              @885     DATA
+  _list                               @886     DATA
+  list                                @887     DATA
+  _premod                             @888     DATA
+  premod                              @889     DATA
+  _module                             @890     DATA
+  module                              @891     DATA
+  _aqueue                             @892     DATA
+  aqueue                              @893     DATA
+  _win                                @894     DATA
+  _thread                             @895     DATA
+  thread                              @896     DATA
+  _memory                             @897     DATA
+  memory                              @898     DATA
+  win                                 @899     DATA
+  _handles                            @900     DATA
+  handles                             @901     DATA
+  _bpoint                             @902     DATA
+  bpoint                              @903     DATA
+  _bpmem                              @904     DATA
+  bpmem                               @905     DATA
+  _bppage                             @906     DATA
+  bppage                              @907     DATA
+  _bphard                             @908     DATA
+  bphard                              @909     DATA
+  _watch                              @910     DATA
+  watch                               @911     DATA
+  _patch                              @912     DATA
+  patch                               @913     DATA
+  _procdata                           @914     DATA
+  procdata                            @915     DATA
+  _encaddr                            @916     DATA
+  encaddr                             @917     DATA
+  _sehchain                           @918     DATA
+  sehchain                            @919     DATA
+  _source                             @920     DATA
+  callstk                             @921     DATA
+  _callstk                            @922     DATA
+  source                              @923     DATA
+  _srccode                            @924     DATA
+  srccode                             @925     DATA
+  _restorewinpos                      @926     DATA
+  restorewinpos                       @927     DATA
