@@ -92,6 +92,22 @@
   #ifndef __CHAR_UNSIGNED__            // Verify that character is unsigned
     #error Please set default char type to unsigned (option -funsigned-char)
   #endif
+
+  // Fix for MinGW
+  #define ODBG_Plugindata      _ODBG_Plugindata
+  #define ODBG_Plugininit      _ODBG_Plugininit
+  #define ODBG_Pluginmainloop  _ODBG_Pluginmainloop
+  #define ODBG_Pluginsaveudd   _ODBG_Pluginsaveudd
+  #define ODBG_Pluginuddrecord _ODBG_Pluginuddrecord
+  #define ODBG_Pluginmenu      _ODBG_Pluginmenu
+  #define ODBG_Pluginaction    _ODBG_Pluginaction
+  #define ODBG_Pluginshortcut  _ODBG_Pluginshortcut
+  #define ODBG_Pluginreset     _ODBG_Pluginreset
+  #define ODBG_Pluginclose     _ODBG_Pluginclose
+  #define ODBG_Plugindestroy   _ODBG_Plugindestroy
+  #define ODBG_Paused          _ODBG_Paused
+  #define ODBG_Pausedex        _ODBG_Pausedex
+  #define ODBG_Plugincmd       _ODBG_Plugincmd
 #endif
 
 
