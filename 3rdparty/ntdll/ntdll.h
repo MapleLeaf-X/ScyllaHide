@@ -4875,7 +4875,11 @@ NtQuerySystemInformation(
 	_Out_opt_ PULONG ReturnLength
 	);
 
-#define _Out_writes_bytes_opt_(s)
+#ifdef __MINGW32__
+	#ifndef _Out_writes_bytes_opt_
+		#define _Out_writes_bytes_opt_(s)
+	#endif
+#endif
 
 #if NTDDI_VERSION >= NTDDI_WIN7
 NTSYSCALLAPI

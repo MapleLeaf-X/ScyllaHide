@@ -24,7 +24,7 @@
 #endif
 
 #ifndef DBG_PRINTEXCEPTION_WIDE_C
-#define DBG_PRINTEXCEPTION_WIDE_C (0x4001000A)
+#define DBG_PRINTEXCEPTION_WIDE_C 0x4001000A
 #endif
 
 typedef NTSTATUS (NTAPI * NtWow64QueryInformationProcess64_t)(HANDLE ProcessHandle,
