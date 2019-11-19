@@ -1,9 +1,11 @@
-#pragma once
-#include <Windows.h>
+#ifndef VERSION_H
+#define VERSION_H
+
 #include "../SCMRevGen/scmrev.h"
+#include <windows.h>
 
 #define STRA(x) #x
-#define STRW(x) L#x
+#define STRW(x) L ## #x
 
 #define STR_HELPERA(x) STRA(x)
 #define STR_HELPERW(x) STRW(x)
@@ -18,7 +20,8 @@
 #define SCYLLA_HIDE_VERSION_STRING_A STR_HELPERA(SCYLLA_HIDE_VERSION_MAJOR) "." STR_HELPERA(SCYLLA_HIDE_VERSION_MINOR) "." STR_HELPERA(SCYLLA_HIDE_VERSION_PATCH) "-" GIT_SHORT_HASH_A
 #define SCYLLA_HIDE_VERSION_STRING_W STR_HELPERW(SCYLLA_HIDE_VERSION_MAJOR) L"." STR_HELPERW(SCYLLA_HIDE_VERSION_MINOR) L"." STR_HELPERW(SCYLLA_HIDE_VERSION_PATCH) L"-" GIT_SHORT_HASH_W
 
-namespace scl
-{
-    void ShowAboutBox(HWND hWnd);
+namespace scl {
+	void ShowAboutBox(HWND hWnd);
 }
+
+#endif //VERSION_H

@@ -39,7 +39,7 @@ const RTL_OSVERSIONINFOEXW* scl::GetVersionExW() {
 	if(!cached) {
 		osVerInfo.dwOSVersionInfoSize = sizeof(osVerInfo);
 		::RtlGetVersion(reinterpret_cast<PRTL_OSVERSIONINFOW>(&osVerInfo));
-		auto peb = ::GetPebAddress(::GetCurrentProcess());
+		auto peb = GetPebAddress(::GetCurrentProcess());
 		if(peb) {
 			osVerInfo.dwMajorVersion = peb->OSMajorVersion;
 			osVerInfo.dwMinorVersion = peb->OSMinorVersion;
@@ -54,7 +54,7 @@ bool scl::IsWindows64() {
 #ifdef _WIN64
 	return true;
 #else
-	return (::GetNativeSystemInfo()->wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64);
+	return (scl::GetNativeSystemInfo()->wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64);
 #endif
 }
 
@@ -71,7 +71,7 @@ scl::eOsVersion scl::GetWindowsVersion() {
 
 	version = OS_INVALID;
 
-	const auto osVerInfo = GetVersionExW();
+	const auto osVerInfo = scl::GetVersionExW();
 
 	if(osVerInfo->dwMajorVersion == 5) {
 		if(osVerInfo->dwMinorVersion == 0) {

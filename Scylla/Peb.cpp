@@ -2,13 +2,14 @@
 #include "Util.h"
 #include <Scylla/NtApiShim.h>
 #include <Scylla/OsInfo.h>
+#include <cstddef>
 
 scl::PEB* scl::GetPebAddress(HANDLE hProcess) {
-	PROCESS_BASIC_INFORMATION pbi = {0};
+	::PROCESS_BASIC_INFORMATION pbi = {0};
 
 	auto status = ::NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), nullptr);
 
-	return NT_SUCCESS(status) ? static_cast<PEB*>(pbi.PebBaseAddress) : nullptr;
+	return NT_SUCCESS(status) ? reinterpret_cast<PEB*>(pbi.PebBaseAddress) : nullptr;
 }
 
 /**
@@ -18,9 +19,9 @@ PVOID64 scl::GetPeb64Address(HANDLE hProcess) {
 #ifndef _WIN64
 	PROCESS_BASIC_INFORMATION<DWORD64> pbi = {0};
 
-	bool success = ::Wow64QueryInformationProcess64(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), nullptr);
+	bool success = Wow64QueryInformationProcess64(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), nullptr);
 
-	return success ? (PVOID64)pbi.PebBaseAddress : nullptr;
+	return success ? reinterpret_cast<PEB*>(pbi.PebBaseAddress) : nullptr;
 #endif
 
 	return nullptr;
@@ -44,12 +45,12 @@ std::shared_ptr<scl::PEB> scl::GetPeb(HANDLE hProcess) {
 std::shared_ptr<scl::PEB64> scl::Wow64GetPeb64(HANDLE hProcess) {
 #ifndef _WIN64
 	auto peb64_addr = GetPeb64Address(hProcess);
-	if(peb64_addr == nullptr)
+	if(!peb64_addr)
 		return nullptr;
 
 	auto peb64 = std::make_shared<PEB64>();
 
-	if(Wow64ReadProcessMemory64(hProcess, peb64_addr, peb64.get(), sizeof(PEB64), nullptr))
+	if(scl::Wow64ReadProcessMemory64(hProcess, peb64_addr, peb64.get(), sizeof(PEB64), nullptr))
 		return peb64;
 #endif
 
@@ -58,7 +59,7 @@ std::shared_ptr<scl::PEB64> scl::Wow64GetPeb64(HANDLE hProcess) {
 
 bool scl::SetPeb(HANDLE hProcess, const PEB* pPeb) {
 	auto peb_addr = GetPebAddress(hProcess);
-	if(peb_addr == nullptr)
+	if(!peb_addr)
 		return false;
 
 	return ::WriteProcessMemory(hProcess, peb_addr, pPeb, sizeof(*pPeb), nullptr) == TRUE;
@@ -70,10 +71,10 @@ bool scl::SetPeb(HANDLE hProcess, const PEB* pPeb) {
 bool scl::Wow64SetPeb64(HANDLE hProcess, const PEB64* pPeb64) {
 #ifndef _WIN64
 	auto peb64_addr = GetPeb64Address(hProcess);
-	if(peb64_addr == nullptr)
+	if(!peb64_addr)
 		return false;
 
-	return Wow64WriteProcessMemory64(hProcess, peb64_addr, pPeb64, sizeof(*pPeb64), nullptr);
+	return scl::Wow64WriteProcessMemory64(hProcess, peb64_addr, pPeb64, sizeof(*pPeb64), nullptr);
 #endif
 
 	return false;
@@ -81,11 +82,11 @@ bool scl::Wow64SetPeb64(HANDLE hProcess, const PEB64* pPeb64) {
 
 PVOID64 scl::Wow64GetModuleHandle64(const wchar_t* moduleName) {
 	const auto Peb64 = Wow64GetPeb64(NtCurrentProcess);
-	if(Peb64 == nullptr)
+	if(!Peb64)
 		return nullptr;
 
 	PEB_LDR_DATA64 LdrData64;
-	if(Wow64ReadProcessMemory64(NtCurrentProcess, (PVOID64)Peb64->Ldr, &LdrData64, sizeof(LdrData64), nullptr) == FALSE)
+	if(!scl::Wow64ReadProcessMemory64(NtCurrentProcess, reinterpret_cast<PVOID64>(Peb64->Ldr), &LdrData64, sizeof(LdrData64), nullptr))
 		return nullptr;
 
 	PVOID64 DllBase = nullptr;
@@ -94,19 +95,19 @@ PVOID64 scl::Wow64GetModuleHandle64(const wchar_t* moduleName) {
 	Head.InLoadOrderLinks.Flink = LdrData64.InLoadOrderModuleList.Flink;
 
 	do {
-		if(!Wow64ReadProcessMemory64(NtCurrentProcess, (PVOID64)Head.InLoadOrderLinks.Flink, &Head, sizeof(Head), nullptr))
+		if(!scl::Wow64ReadProcessMemory64(NtCurrentProcess, reinterpret_cast<PVOID64>(Head.InLoadOrderLinks.Flink), &Head, sizeof(Head), nullptr))
 			break;
 
-		wchar_t* BaseDllName = ::RtlAllocateHeap(::RtlProcessHeap(), HEAP_ZERO_MEMORY, Head.BaseDllName.MaximumLength);
-		if(BaseDllName == nullptr ||
-			!Wow64ReadProcessMemory64(NtCurrentProcess, static_cast<PVOID64>(Head.BaseDllName.Buffer), BaseDllName, Head.BaseDllName.MaximumLength, nullptr))
+		wchar_t* BaseDllName = static_cast<wchar_t*>(::RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, Head.BaseDllName.MaximumLength));
+		if(!BaseDllName ||
+			!scl::Wow64ReadProcessMemory64(NtCurrentProcess, reinterpret_cast<PVOID64>(Head.BaseDllName.Buffer), BaseDllName, Head.BaseDllName.MaximumLength, nullptr))
 			break;
 
 		if(_wcsicmp(moduleName, BaseDllName) == 0) {
-			DllBase = Head.DllBase;
+			DllBase = reinterpret_cast<PVOID64>(Head.DllBase);
 		}
 
-		::RtlFreeHeap(::RtlProcessHeap(), 0, BaseDllName);
+		::RtlFreeHeap(RtlProcessHeap(), 0, BaseDllName);
 
 	} while(Head.InLoadOrderLinks.Flink != LastEntry && DllBase == nullptr);
 
@@ -115,13 +116,13 @@ PVOID64 scl::Wow64GetModuleHandle64(const wchar_t* moduleName) {
 
 DWORD scl::GetHeapFlagsOffset(bool x64) {
 	if(x64) {
-		if(scl::GetWindowsVersion() >= scl::OS_WIN_VISTA)
+		if(GetWindowsVersion() >= OS_WIN_VISTA)
 			return 0x70;
 		else
 			return 0x14;
 	}
 	else {
-		if (scl::GetWindowsVersion() >= scl::OS_WIN_VISTA)
+		if(GetWindowsVersion() >= OS_WIN_VISTA)
 			return 0x40;
 		else
 			return 0x0C;
@@ -130,13 +131,13 @@ DWORD scl::GetHeapFlagsOffset(bool x64) {
 
 DWORD scl::GetHeapForceFlagsOffset(bool x64) {
 	if(x64) {
-		if(scl::GetWindowsVersion() >= scl::OS_WIN_VISTA)
+		if(GetWindowsVersion() >= OS_WIN_VISTA)
 			return 0x74;
 		else
 			return 0x18;
 	}
 	else {
-		if(scl::GetWindowsVersion() >= scl::OS_WIN_VISTA)
+		if(GetWindowsVersion() >= OS_WIN_VISTA)
 			return 0x44;
 		else
 			return 0x10;

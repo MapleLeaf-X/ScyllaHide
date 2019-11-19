@@ -3088,6 +3088,14 @@ typedef struct _TEB_ACTIVE_FRAME
 	PTEB_ACTIVE_FRAME_CONTEXT Context;
 } TEB_ACTIVE_FRAME, *PTEB_ACTIVE_FRAME;
 
+#ifdef __MINGW32__
+typedef struct _PROCESSOR_NUMBER {
+	USHORT Group;
+	UCHAR Number;
+	UCHAR Reserved;
+} PROCESSOR_NUMBER, *PPROCESSOR_NUMBER;
+#endif
+
 typedef struct _TEB
 {
 	NT_TIB NtTib;
@@ -3599,7 +3607,7 @@ typedef struct _SYSTEM_EXTENDED_THREAD_INFORMATION
 #if NTDDI_VERSION >= NTDDI_VISTA
 #define THREAD_ALL_ACCESS							(STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | \
 													0xFFFF)
-#else
+#elif !defined(THREAD_ALL_ACCESS)
 #define THREAD_ALL_ACCESS							(STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | \
 													0x3FF)
 #endif
