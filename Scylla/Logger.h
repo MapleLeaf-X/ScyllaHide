@@ -2,6 +2,7 @@
 #define LOGGER_H
 
 #include <fstream>
+#include <array>
 #include <cstdarg>
 
 namespace scl {
@@ -40,8 +41,8 @@ namespace scl {
 		void LogGeneric(const char* prefix, LogCbA cb_a, LogCbW cb_w, const wchar_t* fmt, va_list ap);
 
 	private:
-		LogCbA cb_a_[MaxSeverity];
-		LogCbW cb_w_[MaxSeverity];
+		std::array<LogCbA, MaxSeverity> cb_a_;
+		std::array<LogCbW, MaxSeverity> cb_w_;
 		std::ofstream file_;
 	};
 
