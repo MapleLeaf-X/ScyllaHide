@@ -872,6 +872,59 @@ typedef struct _PROCESS_HANDLE_INFORMATION
 	ULONG HandleCountHighWatermark;
 } PROCESS_HANDLE_INFORMATION, *PPROCESS_HANDLE_INFORMATION;
 
+// #if NTDDI_VERSION >= NTDDI_WIN10_RS3
+typedef struct _PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY
+{
+	union {
+		ULONG Flags;
+		struct
+		{
+			ULONG FilterId : 4;
+			ULONG ReservedFlags : 28;
+		} DUMMYSTRUCTNAME;
+	} DUMMYUNIONNAME;
+} PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY, *PPROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY;
+
+typedef struct _PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY
+{
+	union
+	{
+		ULONG Flags;
+		struct
+		{
+			ULONG EnableExportAddressFilter : 1;
+			ULONG AuditExportAddressFilter : 1;
+			ULONG EnableExportAddressFilterPlus : 1;
+			ULONG AuditExportAddressFilterPlus : 1;
+			ULONG EnableImportAddressFilter : 1;
+			ULONG AuditImportAddressFilter : 1;
+			ULONG EnableRopStackPivot : 1;
+			ULONG AuditRopStackPivot : 1;
+			ULONG EnableRopCallerCheck : 1;
+			ULONG AuditRopCallerCheck : 1;
+			ULONG EnableRopSimExec : 1;
+			ULONG AuditRopSimExec : 1;
+			ULONG ReservedFlags : 20;
+		} DUMMYSTRUCTNAME;
+	} DUMMYUNIONNAME;
+} PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY, *PPROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY;
+
+typedef struct _PROCESS_MITIGATION_CHILD_PROCESS_POLICY
+{
+	union
+	{
+		ULONG Flags;
+		struct
+		{
+			ULONG NoChildProcessCreation : 1;
+			ULONG AuditNoChildProcessCreation : 1;
+			ULONG AllowSecureProcessCreation : 1;
+			ULONG ReservedFlags : 29;
+		} DUMMYSTRUCTNAME;
+	} DUMMYUNIONNAME;
+} PROCESS_MITIGATION_CHILD_PROCESS_POLICY, *PPROCESS_MITIGATION_CHILD_PROCESS_POLICY;
+// #endif
+
 #if NTDDI_VERSION >= NTDDI_VISTA
 typedef struct _PROCESS_MITIGATION_POLICY_INFORMATION
 {
@@ -4821,6 +4874,8 @@ NtQuerySystemInformation(
 	_Out_opt_ PULONG ReturnLength
 	);
 
+#define _Out_writes_bytes_opt_(s)
+
 #if NTDDI_VERSION >= NTDDI_WIN7
 NTSYSCALLAPI
 NTSTATUS
@@ -8227,6 +8282,7 @@ RtlWalkHeap(
 	_Inout_ PRTL_HEAP_WALK_ENTRY Entry
 	);
 
+#ifndef __MINGW32__
 NTSYSAPI
 NTSTATUS
 NTAPI
@@ -8247,6 +8303,7 @@ RtlSetHeapInformation(
 	_In_opt_ PVOID HeapInformation,
 	_In_opt_ SIZE_T HeapInformationLength
 	);
+#endif
 
 NTSYSAPI
 SIZE_T
