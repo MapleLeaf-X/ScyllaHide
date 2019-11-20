@@ -24,7 +24,7 @@ for /f "usebackq delims=" %%i in (`date.exe +^"%%Y^"`) do (
 )
 
 echo #ifndef SCMREV_H> scmrev.h
-echo #define SCMREV_H> scmrev.h
+echo #define SCMREV_H>> scmrev.h
 echo.>> scmrev.h
 echo #define GIT_VERSION_NUMBER %GIT_VERSION_NUMBER%>> scmrev.h
 echo #define GIT_SHORT_HASH_A "%GIT_SHORT_HASH%">> scmrev.h
@@ -33,4 +33,5 @@ echo #define COMPILE_DATE_A "%COMPILE_DATE%">> scmrev.h
 echo #define COMPILE_DATE_W L"%COMPILE_DATE%">> scmrev.h
 echo #define COMPILE_YEAR_A "%COMPILE_YEAR%">> scmrev.h
 echo #define COMPILE_YEAR_W L"%COMPILE_YEAR%">> scmrev.h
-echo #endif //SCMREV_H> scmrev.h
+echo.>> scmrev.h
+echo #endif //SCMREV_H>> scmrev.h
