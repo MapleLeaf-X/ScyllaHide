@@ -87,10 +87,8 @@ bool ApplyNtdllHook(HOOK_DLL_DATA * hdd, HANDLE hProcess, BYTE * dllMemory, DWOR
     void * HookedNtYieldExecution = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtYieldExecution") + imageBase);
     void * HookedNtGetContextThread = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtGetContextThread") + imageBase);
     void * HookedNtSetContextThread = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtSetContextThread") + imageBase);
-#ifndef _WIN64
     void * HookedKiUserExceptionDispatcher = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedKiUserExceptionDispatcher") + imageBase);
     void * HookedNtContinue = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtContinue") + imageBase);
-#endif
     void * HookedNtClose = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtClose") + imageBase);
     void * HookedNtDuplicateObject = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtDuplicateObject") + imageBase);
     void * HookedNtSetDebugFilterState = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedNtSetDebugFilterState") + imageBase);
@@ -210,18 +208,89 @@ bool ApplyNtdllHook(HOOK_DLL_DATA * hdd, HANDLE hProcess, BYTE * dllMemory, DWOR
         HOOK_NATIVE_NOTRAMP(NtSetDebugFilterState);
     }
 
-#ifndef _WIN64
     if (hdd->EnableKiUserExceptionDispatcherHook == TRUE)
     {
         g_log.LogDebug(L"ApplyNtdllHook -> Hooking KiUserExceptionDispatcher");
+#ifdef _WIN64
+        // The x86_64 version of this function currently contains relative offset instructions
+        // which will cause problems with the naive trampoline generation currently in use.
+        // Therefore, let us apply some manual patching instead.
+        PVOID address = (PVOID)_KiUserExceptionDispatcher;
+        const bool startsWithCld = ((UINT8*)address)[0] == 0xFC; // true on Vista and later
+        if ((startsWithCld && *(PUINT32)address != 0x058B48FC) ||
+            (!startsWithCld && (*(PUINT32)address & 0xFFFFFF) != 0x058B48))
+        {
+            g_log.LogError(L"ApplyNtdllHook -> KiUserExceptionDispatcher pattern mismatch 0x%lx", *(PUINT32)address);
+        }
+        else
+        {
+            // This function currently has a nine byte NOP before it, probably for hot patching?
+            // There is also some alignment space. Let's borrow this to write our trampoline.
+            uint8_t trampoline[] =
+            {
+                0xFF, 0x15, 0x0F, 0x00, 0x00, 0x00,         // call qword ptr[+15]
+                0xFC,                                       // cld
+                0x48, 0x8B, 0x05, 0x22, 0xA4, 0x0D, 0x00,   // mov rax, qword ptr:[<Wow64PrepareForException>]
+                0x48, 0x85, 0xC0,                           // test rax,rax
+                0xEB, 0x0B                                  // jmp <next real instruction>
+            };
+
+            // Deal with XP/2003
+            if (!startsWithCld)
+            {
+                trampoline[6] = 0x90;                       // cld -> nop
+                trampoline[18] -= 0x1;                      // <next real instruction> -= 1
+            }
+
+            // update RVA of Wow64PrepareForException
+            UINT32 rvaWow64PrepareForException;
+            ReadProcessMemory(hProcess, (LPCVOID)(((UINT_PTR)address) + (startsWithCld ? 4 : 3)), (PVOID)&rvaWow64PrepareForException,
+                sizeof(rvaWow64PrepareForException), nullptr);
+
+            // instruction is moved up 12/13 bytes. update trampoline
+            rvaWow64PrepareForException += (startsWithCld ? 13 : 12);
+            memcpy(&trampoline[10], &rvaWow64PrepareForException, sizeof(rvaWow64PrepareForException));
+
+            uint8_t hook[] =
+            {
+                0xEB, 0xEB,     // jmp -21
+                0xFE, 0xED, 0xFA, 0xCE, 0xDE, 0xAD, 0xBE, 0xEF,
+            };
+
+            // insert hook into payload
+            memcpy(&hook[2], &HookedKiUserExceptionDispatcher, sizeof(PVOID));
+
+            // for most hooks the following fields are for the trampoline. this works for them because
+            // the trampoline is an identical copy of what was at the start of the function. since this
+            // is not the case for us, we must preserve the original bytes in memory we deliberately set
+            // aside for this purpose.
+            PVOID backup_location = VirtualAllocEx(hProcess, nullptr, sizeof(hook), MEM_COMMIT,
+                PAGE_READWRITE);
+
+            hdd->dKiUserExceptionDispatcher = (decltype(hdd->dKiUserExceptionDispatcher))(backup_location);
+            hdd->KiUserExceptionDispatcherBackupSize = sizeof(hook);
+
+            // backup start of function
+            uint8_t backup_prologue[sizeof(hook)];
+            ReadProcessMemory(hProcess, address, backup_prologue, sizeof(backup_prologue), nullptr);
+            WriteProcessMemory(hProcess, backup_location, backup_prologue, sizeof(backup_prologue), nullptr);
+
+            // install trampoline
+            PVOID trampoline_location = (PVOID)(((UINT_PTR)address) - sizeof(trampoline));
+            WriteProcessMemory(hProcess, trampoline_location, trampoline, sizeof(trampoline), nullptr);
+
+            // install hook
+            WriteProcessMemory(hProcess, address, hook, sizeof(hook), nullptr);
+        }
+#else
         HOOK(KiUserExceptionDispatcher);
+#endif
     }
     if (hdd->EnableNtContinueHook == TRUE)
     {
         g_log.LogDebug(L"ApplyNtdllHook -> Hooking NtContinue");
         HOOK_NATIVE(NtContinue);
     }
-#endif
 
     if (hdd->EnableNtQuerySystemTimeHook == TRUE && _NtQuerySystemTime != 0)
     {
@@ -258,6 +327,13 @@ bool ApplyKernel32Hook(HOOK_DLL_DATA * hdd, HANDLE hProcess, BYTE * dllMemory, D
 {
     hKernel = GetModuleHandleW(L"kernel32.dll");
     hKernelbase = GetModuleHandleW(L"kernelbase.dll");
+
+    if (GetModuleBaseRemote(hProcess, L"kernel32.dll") == nullptr ||
+        (hKernelbase != nullptr && GetModuleBaseRemote(hProcess, L"kernelbase.dll") == nullptr))
+    {
+        hdd->isKernel32Hooked = FALSE;
+        return true;
+    }
 
     void * HookedOutputDebugStringA = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedOutputDebugStringA") + imageBase);
     void * HookedGetTickCount = (void *)(GetDllFunctionAddressRVA(dllMemory, "HookedGetTickCount") + imageBase);
@@ -408,6 +484,11 @@ void ApplyPEBPatch(HANDLE hProcess, DWORD flags)
                 g_log.LogError(L"Failed to patch flags in PEB!ProcessHeaps");
         }
 
+        if (flags & PEB_PATCH_OsBuildNumber)
+        {
+            peb->OSBuildNumber++;
+        }
+
         if (!scl::SetPeb(hProcess, peb.get()))
             g_log.LogError(L"Failed to write PEB to remote process");
 
@@ -439,10 +520,86 @@ void ApplyPEBPatch(HANDLE hProcess, DWORD flags)
                 g_log.LogError(L"Failed to patch flags in PEB64!ProcessHeaps");
         }
 
+        if (flags & PEB_PATCH_OsBuildNumber)
+        {
+            peb64->OSBuildNumber++;
+        }
+
         if (!scl::Wow64SetPeb64(hProcess, peb64.get()))
             g_log.LogError(L"Failed to write PEB64 to remote process");
     }
 #endif
+}
+
+void ApplyNtdllVersionPatch(HANDLE hProcess)
+{
+    // This will get the 32 bit ntdll if we are on Wow64, which is fine.
+    // Note that this relies on the addresses of DLLs in \KnownDlls[32] to be the same for all processes
+    const PVOID Ntdll = GetModuleHandleW(L"ntdll.dll");
+
+    // Get the resource data entry for VS_VERSION_INFO
+    LDR_RESOURCE_INFO ResourceIdPath;
+    ResourceIdPath.Type = (ULONG_PTR)RT_VERSION;
+    ResourceIdPath.Name = VS_VERSION_INFO;
+    ResourceIdPath.Language = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+    PIMAGE_RESOURCE_DATA_ENTRY ResourceDataEntry = nullptr;
+    NTSTATUS Status = LdrFindResource_U(Ntdll, &ResourceIdPath, 3, &ResourceDataEntry);
+    if (!NT_SUCCESS(Status))
+    {
+        g_log.LogError(L"Failed to find VS_VERSION_INFO resource in ntdll.dll: %08X", Status);
+        return;
+    }
+
+    // Get the address and size of VS_VERSION_INFO
+    PVOID Address = nullptr;
+    ULONG Size = 0;
+    Status = LdrAccessResource(Ntdll, ResourceDataEntry, &Address, &Size);
+    if (!NT_SUCCESS(Status))
+    {
+        g_log.LogError(L"Failed to obtain size of VS_VERSION_INFO resource in ntdll.dll: %08X", Status);
+        return;
+    }
+    if (Address == nullptr || Size == 0)
+    {
+        g_log.LogError(L"VS_VERSION_INFO resource in ntdll.dll has size zero");
+        return;
+    }
+
+    // VS_VERSIONINFO is a mess to navigate because it is a nested struct of variable size with (grand)children all of variable sizes
+    // See: https://docs.microsoft.com/en-gb/windows/win32/menurc/vs-versioninfo
+    // Instead of finding VS_VERSIONINFO -> StringFileInfo[] -> StringTable[] -> String (-> WCHAR[]) properly, just do it the memcmp way
+    const WCHAR Needle[] = L"FileVersion";
+    PUCHAR P = (PUCHAR)Address;
+    for ( ; P < (PUCHAR)Address + Size - sizeof(Needle); ++P)
+    {
+        if (memcmp(P, Needle, sizeof(Needle)) == 0)
+            break;
+    }
+    if (P == (PUCHAR)Address)
+    {
+        g_log.LogError(L"Failed to find FileVersion in ntdll.dll VS_VERSION_INFO");
+        return;
+    }
+
+    // Skip to the version number and discard extra nulls
+    P += sizeof(Needle);
+    while (*(PWCHAR)P == L'\0')
+    {
+        P += sizeof(WCHAR);
+    }
+
+    // P now points at e.g. 6.1.xxxx.yyyy or 10.0.xxxxx.yyyy. Skip the major and minor version numbers to get to the build number xxxx
+    const ULONG Skip = NtCurrentPeb()->OSMajorVersion >= 10 ? 5 * sizeof(WCHAR) : 4 * sizeof(WCHAR);
+    P += Skip;
+
+    // Write a new bogus build number
+    WCHAR NewBuildNumber[] = L"1337";
+    ULONG OldProtect;
+    if (VirtualProtectEx(hProcess, P, sizeof(NewBuildNumber) - sizeof(WCHAR), PAGE_EXECUTE_READWRITE, &OldProtect))
+    {
+        WriteProcessMemory(hProcess, P, NewBuildNumber, sizeof(NewBuildNumber) - sizeof(WCHAR), nullptr);
+        VirtualProtectEx(hProcess, P, sizeof(NewBuildNumber), OldProtect, &OldProtect);
+    }
 }
 
 void RestoreMemory(HANDLE hProcess, DWORD_PTR address, void * buffer, int bufferSize)
@@ -555,11 +712,17 @@ void RestoreNtdllHooks(HOOK_DLL_DATA * hdd, HANDLE hProcess)
 
 void RestoreKernel32Hooks(HOOK_DLL_DATA * hdd, HANDLE hProcess)
 {
-    RESTORE_JMP(GetTickCount);
-    FREE_HOOK(GetTickCount);
-
     RESTORE_JMP(OutputDebugStringA);
+    RESTORE_JMP(GetTickCount);
+    RESTORE_JMP(GetTickCount64);
+    RESTORE_JMP(GetLocalTime);
+    RESTORE_JMP(GetSystemTime);
+
     FREE_HOOK(OutputDebugStringA);
+    FREE_HOOK(GetTickCount);
+    FREE_HOOK(GetTickCount64);
+    FREE_HOOK(GetLocalTime);
+    FREE_HOOK(GetSystemTime);
 
     hdd->isKernel32Hooked = FALSE;
 }

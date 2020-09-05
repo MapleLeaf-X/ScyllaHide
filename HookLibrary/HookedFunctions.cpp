@@ -6,8 +6,10 @@ HOOK_DLL_DATA HookDllData = { 0 };
 
 #include "HookedFunctions.h"
 #include "HookHelper.h"
+#include "Tls.h"
 
 void FakeCurrentParentProcessId(PSYSTEM_PROCESS_INFORMATION pInfo);
+void FakeCurrentOtherOperationCount(PSYSTEM_PROCESS_INFORMATION pInfo);
 void FilterHandleInfo(PSYSTEM_HANDLE_INFORMATION pHandleInfo, PULONG pReturnLengthAdjust);
 void FilterHandleInfoEx(PSYSTEM_HANDLE_INFORMATION_EX pHandleInfoEx, PULONG pReturnLengthAdjust);
 void FilterProcess(PSYSTEM_PROCESS_INFORMATION pInfo);
@@ -101,6 +103,7 @@ NTSTATUS NTAPI HookedNtQuerySystemInformation(SYSTEM_INFORMATION_CLASS SystemInf
 
                 FilterProcess(ProcessInfo);
                 FakeCurrentParentProcessId(ProcessInfo);
+                FakeCurrentOtherOperationCount(ProcessInfo);
 
                 RESTORE_RETURNLENGTH();
             }
@@ -157,7 +160,6 @@ static bool IsProcessHandleTracingEnabled = false;
 // Instrumentation callback
 
 static LONG volatile InstrumentationCallbackHookInstalled = 0;
-static LONG volatile RecurseGuard = 0;
 static ULONG NumManualSyscalls = 0;
 
 extern "C"
@@ -168,8 +170,8 @@ InstrumentationCallback(
     _Inout_ ULONG_PTR ReturnVal // EAX/RAX
     )
 {
-    if (InterlockedOr(&RecurseGuard, 0x1) == 0x1)
-        return ReturnVal;
+    if (InterlockedOr(TlsGetInstrumentationCallbackDisabled(), 0x1) == 0x1)
+        return ReturnVal; // Do not recurse
 
     const PVOID ImageBase = NtCurrentPeb()->ImageBaseAddress;
     const PIMAGE_NT_HEADERS NtHeaders = RtlImageNtHeader(ImageBase);
@@ -187,7 +189,7 @@ InstrumentationCallback(
         }
     }
 
-    InterlockedAnd(&RecurseGuard, 0);
+    InterlockedAnd(TlsGetInstrumentationCallbackDisabled(), 0);
 
     return ReturnVal;
 }
@@ -200,17 +202,44 @@ NTSTATUS NTAPI HookedNtQueryInformationProcess(HANDLE ProcessHandle, PROCESSINFO
         InstallInstrumentationCallbackHook(NtCurrentProcess, FALSE);
     }
 
+    NTSTATUS Status;
+    if (ProcessInformationClass == ProcessDebugObjectHandle && // Handle ProcessDebugObjectHandle early
+        ProcessInformation != nullptr &&
+        ProcessInformationLength == sizeof(HANDLE) &&
+        (ProcessHandle == NtCurrentProcess || HandleToULong(NtCurrentTeb()->ClientId.UniqueProcess) == GetProcessIdByProcessHandle(ProcessHandle)))
+    {
+        // Verify (1) that the handle has PROCESS_QUERY_INFORMATION access, and (2) that writing
+        // to ProcessInformation and/or ReturnLength does not cause any access or alignment violations
+        Status = HookDllData.dNtQueryInformationProcess(ProcessHandle,
+                                                        ProcessDebugPort, // Note: not ProcessDebugObjectHandle
+                                                        ProcessInformation,
+                                                        sizeof(HANDLE),
+                                                        ReturnLength);
+        if (!NT_SUCCESS(Status))
+            return Status;
+
+        // The kernel calls DbgkOpenProcessDebugPort here
+
+        // This should be done in a try/except block, but since we are a mapped DLL we cannot use SEH.
+        // Rely on the fact that the NtQIP call we just did wrote to the same buffers successfully
+        *(PHANDLE)ProcessInformation = nullptr;
+        if (ReturnLength != nullptr)
+            *ReturnLength = sizeof(HANDLE);
+
+        return STATUS_PORT_NOT_SET;
+    }
+
     if ((ProcessInformationClass == ProcessDebugFlags ||
-        ProcessInformationClass == ProcessDebugObjectHandle ||
         ProcessInformationClass == ProcessDebugPort ||
         ProcessInformationClass == ProcessBasicInformation ||
         ProcessInformationClass == ProcessBreakOnTermination ||
-        ProcessInformationClass == ProcessHandleTracing) &&
+        ProcessInformationClass == ProcessHandleTracing ||
+        ProcessInformationClass == ProcessIoCounters) &&
         (ProcessHandle == NtCurrentProcess || HandleToULong(NtCurrentTeb()->ClientId.UniqueProcess) == GetProcessIdByProcessHandle(ProcessHandle)))
     {
-        NTSTATUS ntStat = HookDllData.dNtQueryInformationProcess(ProcessHandle, ProcessInformationClass, ProcessInformation, ProcessInformationLength, ReturnLength);
+        Status = HookDllData.dNtQueryInformationProcess(ProcessHandle, ProcessInformationClass, ProcessInformation, ProcessInformationLength, ReturnLength);
 
-        if (NT_SUCCESS(ntStat) && ProcessInformation != 0 && ProcessInformationLength != 0)
+        if (NT_SUCCESS(Status) && ProcessInformation != nullptr && ProcessInformationLength != 0)
         {
             if (ProcessInformationClass == ProcessDebugFlags)
             {
@@ -219,21 +248,6 @@ NTSTATUS NTAPI HookedNtQueryInformationProcess(HANDLE ProcessHandle, PROCESSINFO
                 *((ULONG *)ProcessInformation) = ((ValueProcessDebugFlags & PROCESS_NO_DEBUG_INHERIT) != 0) ? 0 : PROCESS_DEBUG_INHERIT;
 
                 RESTORE_RETURNLENGTH();
-            }
-            else if (ProcessInformationClass == ProcessDebugObjectHandle)
-            {
-                BACKUP_RETURNLENGTH();
-
-                if (HookDllData.dNtClose)
-                    HookDllData.dNtClose(*(PHANDLE)ProcessInformation);
-                else
-                    NtClose(*(PHANDLE)ProcessInformation);
-
-                *((HANDLE *)ProcessInformation) = nullptr;
-
-                RESTORE_RETURNLENGTH(); // Trigger any possible exceptions caused by messing with the output buffer before changing the final return status
-
-                ntStat = STATUS_PORT_NOT_SET;
             }
             else if (ProcessInformationClass == ProcessDebugPort)
             {
@@ -264,11 +278,19 @@ NTSTATUS NTAPI HookedNtQueryInformationProcess(HANDLE ProcessHandle, PROCESSINFO
                 BACKUP_RETURNLENGTH();
                 RESTORE_RETURNLENGTH(); // Trigger any possible exceptions caused by messing with the output buffer before changing the final return status
 
-                ntStat = IsProcessHandleTracingEnabled ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER;
+                Status = IsProcessHandleTracingEnabled ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER;
 			}
+            else if (ProcessInformationClass == ProcessIoCounters)
+            {
+                BACKUP_RETURNLENGTH();
+
+                ((PIO_COUNTERS)ProcessInformation)->OtherOperationCount = 1;
+
+                RESTORE_RETURNLENGTH();
+            }
         }
 
-        return ntStat;
+        return Status;
     }
     return HookDllData.dNtQueryInformationProcess(ProcessHandle, ProcessInformationClass, ProcessInformation, ProcessInformationLength, ReturnLength);
 }
@@ -476,12 +498,26 @@ void NTAPI HandleKiUserExceptionDispatcher(PEXCEPTION_RECORD pExcptRec, PCONTEXT
         ContextFrame->Dr7 = 0;
     }
 }
+#ifdef _WIN64
+void NTAPI HookedKiUserExceptionDispatcher()
+{
+    // inline assembly is not supported in x86_64 with CL.  a more elegant
+    // way to do this would be to modify the project to include an .asm
+    // source file that defines 'HookedKiUserExceptionDispatcher' for both
+    // 32 and 64 bit.
+    // the + 8 in the line below is because we arrive at this function via
+    // a CALL instruction which causes the stack to shift.  This CALL in
+    // the trampoline is necessary because HandleKiUserExceptionDispatcher
+    // will end in a RET instruction, and the CALL preserves the stack.
+    PCONTEXT ContextFrame = (PCONTEXT)(((UINT_PTR)_AddressOfReturnAddress()) + 8);
 
+    HandleKiUserExceptionDispatcher(nullptr, ContextFrame);
+}
+#else
 VOID NAKED NTAPI HookedKiUserExceptionDispatcher()// (PEXCEPTION_RECORD pExcptRec, PCONTEXT ContextFrame) //remove DRx Registers
 {
     //MOV ECX,DWORD PTR SS:[ESP+4] <- ContextFrame
     //MOV EBX,DWORD PTR SS:[ESP] <- pExcptRec
-#ifndef _WIN64
     __asm
     {
         MOV EAX, [ESP + 4]
@@ -491,10 +527,10 @@ VOID NAKED NTAPI HookedKiUserExceptionDispatcher()// (PEXCEPTION_RECORD pExcptRe
         CALL HandleKiUserExceptionDispatcher
         jmp HookDllData.dKiUserExceptionDispatcher
     }
-#endif
 
     //return HookDllData.dKiUserExceptionDispatcher(pExcptRec, ContextFrame);
 }
+#endif
 
 static DWORD_PTR KiUserExceptionDispatcherAddress = 0;
 
@@ -1016,6 +1052,25 @@ void FakeCurrentParentProcessId(PSYSTEM_PROCESS_INFORMATION pInfo)
         if (pInfo->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess)
         {
             pInfo->InheritedFromUniqueProcessId = ULongToHandle(GetExplorerProcessId());
+            break;
+        }
+
+        if (pInfo->NextEntryOffset == 0)
+            break;
+
+        pInfo = (PSYSTEM_PROCESS_INFORMATION)((DWORD_PTR)pInfo + pInfo->NextEntryOffset);
+    }
+}
+
+void FakeCurrentOtherOperationCount(PSYSTEM_PROCESS_INFORMATION pInfo)
+{
+    while (true)
+    {
+        if (pInfo->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess)
+        {
+            LARGE_INTEGER one;
+            one.QuadPart = 1;
+            pInfo->OtherOperationCount = one;
             break;
         }
 
