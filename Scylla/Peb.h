@@ -12,13 +12,13 @@
 
 namespace scl {
 	template<class T>
-	struct alignas(1) _LIST_ENTRY_T {
+	struct _LIST_ENTRY_T {
 		T Flink;
 		T Blink;
 	};
 
 	template<class T>
-	struct alignas(1) _UNICODE_STRING_T {
+	struct _UNICODE_STRING_T {
 		union {
 			struct {
 				WORD Length;
@@ -30,7 +30,7 @@ namespace scl {
 	};
 
 	template<class T>
-	struct alignas(1) _LDR_DATA_TABLE_ENTRY_T {
+	struct _LDR_DATA_TABLE_ENTRY_T {
 		_LIST_ENTRY_T<T> InLoadOrderLinks;
 		_LIST_ENTRY_T<T> InMemoryOrderLinks;
 		_LIST_ENTRY_T<T> InInitializationOrderLinks;
@@ -67,7 +67,7 @@ namespace scl {
 	};
 
 	template<class T>
-	struct alignas(1) _PEB_LDR_DATA_T {
+	struct _PEB_LDR_DATA_T {
 		DWORD Length;
 		DWORD Initialized;
 		T SsHandle;
@@ -81,7 +81,7 @@ namespace scl {
 	};
 
 	template<typename T, typename NGF, int A>
-	struct alignas(1) _PEB_T {
+	struct _PEB_T {
 		union {
 			struct {
 				BYTE InheritedAddressSpace;
