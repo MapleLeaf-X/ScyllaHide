@@ -38,7 +38,7 @@ namespace scl {
 		void LogError(const wchar_t* fmt, ...);
 
 	protected:
-		void LogGeneric(const char* prefix, LogCbA cb_a, LogCbW cb_w, const wchar_t* fmt, va_list ap);
+		void LogGeneric(const char* prefix, LogCbA cb_a, LogCbW cb_w, const wchar_t* fmt, std::va_list ap);
 
 	private:
 		std::array<LogCbA, MaxSeverity> cb_a_;

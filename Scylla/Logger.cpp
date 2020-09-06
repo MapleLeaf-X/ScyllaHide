@@ -43,7 +43,7 @@ void scl::Logger::LogError(const wchar_t* fmt, ...) {
 	va_end(ap);
 }
 
-void scl::Logger::LogGeneric(const char* prefix, LogCbA cb_a, LogCbW cb_w, const wchar_t* fmt, va_list ap) {
+void scl::Logger::LogGeneric(const char* prefix, LogCbA cb_a, LogCbW cb_w, const wchar_t* fmt, std::va_list ap) {
 	std::va_list vap;
 	va_copy(vap, ap);
 	auto strw = scl::vfmtw(fmt, ap);
