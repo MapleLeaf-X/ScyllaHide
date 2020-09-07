@@ -51,8 +51,8 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\PluginGeneric\ghost.ico">
+    <Image Include="..\PluginGeneric\ghost.ico">
       <Filter>Resource Files</Filter>
-    </None>
+    </Image>
   </ItemGroup>
 </Project>

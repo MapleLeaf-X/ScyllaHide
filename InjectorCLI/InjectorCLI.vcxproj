@@ -151,7 +151,7 @@
     <ResourceCompile Include="Icon.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\PluginGeneric\ghost.ico" />
+    <Image Include="..\PluginGeneric\ghost.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
