@@ -16,11 +16,7 @@
 #include "olly1patches.h"
 
 
-#pragma comment(lib, "ollydbg1\\ollydbg.lib")
-
-#ifndef DLL_EXPORT
-#define DLL_EXPORT __declspec(dllexport)
-#endif
+#pragma comment(lib, "ollydbg1\\ollydbg-gcc.lib") // workaround for vc
 
 #define MENU_PROFILES_OFFSET 10
 
@@ -58,17 +54,17 @@ DEBUG_EVENT *currentDebugEvent;
 
 static void LogCallback(const char *msg)
 {
-    _Message(0, "[%s] %s", SCYLLA_HIDE_NAME_A, msg);
+    Message(0, "[%s] %s", SCYLLA_HIDE_NAME_A, msg);
 }
 
 static void LogErrorCallback(const char *msg)
 {
-    _Error("[%s] %s", SCYLLA_HIDE_NAME_A, msg);
+    Error("[%s] %s", SCYLLA_HIDE_NAME_A, msg);
 }
 
 static void AttachProcess(DWORD dwPID)
 {
-    int result = _Attachtoactiveprocess((int)dwPID);
+    int result = Attachtoactiveprocess((int)dwPID);
 
     if (result != 0)
     {
@@ -80,13 +76,13 @@ static void AttachProcess(DWORD dwPID)
 
 static bool IsAddressBreakpoint(DWORD_PTR address)
 {
-    t_table* pTable = (t_table*)_Plugingetvalue(VAL_BREAKPOINTS);
+    t_table* pTable = (t_table*)Plugingetvalue(VAL_BREAKPOINTS);
     if (pTable)
     {
         t_sorted* pSorted = &(pTable->data);
         for (int i = 0; i < pTable->data.n; i++)
         {
-            t_bpoint* bp = (t_bpoint*)_Getsortedbyselection(pSorted, i);
+            t_bpoint* bp = (t_bpoint*)Getsortedbyselection(pSorted, i);
             if (bp)
             {
                 //char text[100];
@@ -107,9 +103,9 @@ static void MarkSystemDllsOnx64() {
     const char sysPath[] = "windows\\syswow64";
     char lowerCopy[MAX_PATH] = { 0 };
 
-    int t = _Plugingetvalue(VAL_MODULES);
+    int t = Plugingetvalue(VAL_MODULES);
     if (t <= 0)  {
-        _Error("Cannot get module list");
+        Error("Cannot get module list");
         return;
     }
 
@@ -117,7 +113,7 @@ static void MarkSystemDllsOnx64() {
     t_module* tmod;
     for (int i = 0; i < ttab->data.n; i++)
     {
-        tmod = (t_module*)_Getsortedbyselection(&ttab->data, i);
+        tmod = (t_module*)Getsortedbyselection(&ttab->data, i);
 
         for (int j = 0; tmod->path[j]; j++) {
             lowerCopy[j] = tolower(tmod->path[j]);
@@ -137,7 +133,7 @@ static void MarkSystemDllsOnx64() {
 static void PrepareDetach() {
     //delete breakpoints
 
-    t_table* pTable = (t_table*)_Plugingetvalue(VAL_BREAKPOINTS);
+    t_table* pTable = (t_table*)Plugingetvalue(VAL_BREAKPOINTS);
     if (pTable)
     {
         t_sorted* pSorted = &(pTable->data);
@@ -145,9 +141,9 @@ static void PrepareDetach() {
         //IMPORTANT: Reverse index loop
         for (int i = pTable->data.n - 1; i >= 0; i--)
         {
-            t_bpoint* pBreakpoint = (t_bpoint*)_Getsortedbyselection(pSorted, i);
+            t_bpoint* pBreakpoint = (t_bpoint*)Getsortedbyselection(pSorted, i);
             if (pBreakpoint)	{
-                _Deletebreakpoints(pBreakpoint->addr, (pBreakpoint->addr) + 1, TRUE);   //silent
+                Deletebreakpoints(pBreakpoint->addr, (pBreakpoint->addr) + 1, TRUE);   //silent
             }
         }
 
@@ -156,7 +152,7 @@ static void PrepareDetach() {
 
 static void HandleDetachProcess()
 {
-    t_status tStat = _Getstatus();
+    t_status tStat = Getstatus();
 
     if (tStat != STAT_STOPPED && tStat != STAT_RUNNING)
     {
@@ -166,7 +162,7 @@ static void HandleDetachProcess()
 
     PrepareDetach();
 
-    tStat = _Getstatus();
+    tStat = Getstatus();
 
     if (tStat == STAT_STOPPED) {
         if (currentDebugEvent->u.Exception.ExceptionRecord.ExceptionCode == EXCEPTION_BREAKPOINT) {
@@ -199,14 +195,14 @@ static void HandleDetachProcess()
 }
 
 //register plugin with name
-extern "C" int DLL_EXPORT _ODBG_Plugindata(char shortname[32])
+extc int _export cdecl _ODBG_Plugindata(char shortname[32])
 {
     strncpy_s(shortname, 32, SCYLLA_HIDE_NAME_A, _TRUNCATE);
     return PLUGIN_VERSION;
 }
 
 //initialization happens in here
-extern "C" int DLL_EXPORT _ODBG_Plugininit(int ollydbgversion, HWND hw, unsigned long *features)
+extc int _export cdecl ODBG_Plugininit(int ollydbgversion, HWND hw, unsigned long *features)
 {
     if (ollydbgversion < PLUGIN_VERSION)
         return -1;
@@ -215,7 +211,7 @@ extern "C" int DLL_EXPORT _ODBG_Plugininit(int ollydbgversion, HWND hw, unsigned
 
     g_settings.Load(g_scyllaHideIniPath.c_str());
 
-    _Addtolist(0, 0, "%s Plugin v%s Copyright (C) 2014 Aguila / cypher", SCYLLA_HIDE_NAME_A, SCYLLA_HIDE_VERSION_STRING_A);
+    Addtolist(0, 0, "%s Plugin v%s Copyright (C) 2014 Aguila / cypher", SCYLLA_HIDE_NAME_A, SCYLLA_HIDE_VERSION_STRING_A);
 
     //do some Olly fixes
     if (g_settings.opts().ollyFixBugs) {
@@ -260,14 +256,14 @@ extern "C" int DLL_EXPORT _ODBG_Plugininit(int ollydbgversion, HWND hw, unsigned
 // it is safe to terminate. Any non-zero return will stop closing sequence. Do
 // not misuse this possibility! Always inform user about the reasons why
 // termination is not good and ask for his decision!
-extern "C" int DLL_EXPORT _ODBG_Pluginclose(void)
+extc int _export cdecl ODBG_Pluginclose(void)
 {
     //RestoreAllHooks();
     return 0;
 }
 
 //add menu entries
-extern "C" int DLL_EXPORT _ODBG_Pluginmenu(int origin, char data[4096], void *item)
+extc int _export cdecl ODBG_Pluginmenu(int origin, char data[4096], void *item)
 {
     switch (origin)
     {
@@ -301,7 +297,7 @@ extern "C" int DLL_EXPORT _ODBG_Pluginmenu(int origin, char data[4096], void *it
 }
 
 //handle plugin actions
-extern "C" void DLL_EXPORT _ODBG_Pluginaction(int origin, int action, void *item)
+extc void _export cdecl ODBG_Pluginaction(int origin, int action, void *item)
 {
     if (origin == PM_MAIN) {
         switch (action)
@@ -356,7 +352,7 @@ extern "C" void DLL_EXPORT _ODBG_Pluginaction(int origin, int action, void *item
         }
     }
     else if (origin == PM_THREADS) {
-        t_table* threadWindow = (t_table*)_Plugingetvalue(VAL_THREADS);
+        t_table* threadWindow = (t_table*)Plugingetvalue(VAL_THREADS);
         int threadCount = threadWindow->data.n;
         int threadSize = threadWindow->data.itemsize;
         t_thread* thread = (t_thread*)threadWindow->data.data;
@@ -392,7 +388,7 @@ extern "C" void DLL_EXPORT _ODBG_Pluginaction(int origin, int action, void *item
 }
 
 //called for every debugloop pass
-extern "C" void DLL_EXPORT _ODBG_Pluginmainloop(DEBUG_EVENT *debugevent)
+extc void _export cdecl ODBG_Pluginmainloop(DEBUG_EVENT *debugevent)
 {
     if (!debugevent)
         return;
@@ -509,7 +505,7 @@ extern "C" void DLL_EXPORT _ODBG_Pluginmainloop(DEBUG_EVENT *debugevent)
 }
 
 //reset variables. new target started or restarted
-extern "C" void DLL_EXPORT _ODBG_Pluginreset(void)
+extc void _export cdecl ODBG_Pluginreset(void)
 {
     ZeroMemory(&g_hdd, sizeof(HOOK_DLL_DATA));
     bHooked = false;

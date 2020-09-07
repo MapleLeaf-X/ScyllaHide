@@ -42,7 +42,7 @@ void fixBadPEBugs()
 
     BYTE peBug1Fix[] = {0xEB}; //JE (74 1C) to JMP (EB 1C)
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x5C671), &peBug1Fix, sizeof(peBug1Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed PE-Bug at 0x5C671");
+    if(fixed) Addtolist(0,-1,"Fixed PE-Bug at 0x5C671");
 
     /*
     Fixed:
@@ -54,7 +54,7 @@ void fixBadPEBugs()
     */
     BYTE peBug2Fix[] = {0x74,0x79,0x89,0x3C,0xCA};
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x5D827), &peBug2Fix, sizeof(peBug2Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed PE-Bug at 0x5D827");
+    if(fixed) Addtolist(0,-1,"Fixed PE-Bug at 0x5D827");
 
     /*
     0045D8B7  |> 90             |NOP
@@ -69,7 +69,7 @@ void fixBadPEBugs()
     */
     BYTE peBug3Fix[] = {0x90,0x90,0x90,0x90,0x90,0x90};
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x5D8B7), &peBug3Fix, sizeof(peBug3Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed PE-Bug at 0x5D8B7");
+    if(fixed) Addtolist(0,-1,"Fixed PE-Bug at 0x5D8B7");
 
     /*
     004C870A   2B31             SUB ESI,DWORD PTR DS:[ECX]
@@ -89,7 +89,7 @@ void fixBadPEBugs()
     */
     BYTE peBug4Fix[] = {0x2B,0x31,0x38,0x2B,0x25,0x42,0x2A,0x32,0x38,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20};
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0xC870A), &peBug4Fix, sizeof(peBug4Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed PE-Bug at 0xC870A");
+    if(fixed) Addtolist(0,-1,"Fixed PE-Bug at 0xC870A");
 }
 
 //taken from strongOD
@@ -101,7 +101,7 @@ void fixForegroundWindow()
 
     BYTE fgWinFix[] = {0xEB}; //JNZ (75 1C) to JMP (EB 1C)
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x3A1FB), &fgWinFix, sizeof(fgWinFix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed ForegroundWindow at 0x3A1FB");
+    if(fixed) Addtolist(0,-1,"Fixed ForegroundWindow at 0x3A1FB");
 }
 
 //taken from http://waleedassar.blogspot.de/2012/03/ollydbg-v110-and-wow64.html
@@ -113,7 +113,7 @@ void fixX64Bug()
 
     BYTE x64Patch[] = {0xEB}; //JE to JMP
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x311C2), &x64Patch, sizeof(x64Patch), NULL);
-    if(fixed) _Addtolist(0,-1,"Patched single-step break on x64 at 0x311C2");
+    if(fixed) Addtolist(0,-1,"Patched single-step break on x64 at 0x311C2");
 }
 
 //taken from POISON source https://tuts4you.com/download.php?view.2281
@@ -128,7 +128,7 @@ void fixFPUBug()
     ReadProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0xAA2F0), &buf, 1, NULL);
     if(buf[0] == 0xDB)
         fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0xAA2F2), &fpuBugFix, sizeof(fpuBugFix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed FPU-Bug at 0xAA2F2");
+    if(fixed) Addtolist(0,-1,"Fixed FPU-Bug at 0xAA2F2");
 }
 
 //taken from olly-advanced RVA 8225+385
@@ -147,7 +147,7 @@ void fixSprintfBug()
     BYTE retn[] = {0xC3};
     WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+patchAddr), &retn, sizeof(retn), NULL);
 
-    _Addtolist(0,-1,"Patched sprintf bug at 0xA74CF");
+    Addtolist(0,-1,"Patched sprintf bug at 0xA74CF");
 }
 
 //logic taken from olly-advanced RVA 76AF and modified
@@ -201,7 +201,7 @@ void patchEPOutsideCode()
 
     BYTE EPOutsideFix[] = {0x83,0xC4,0x10,0x90,0x90}; //call MessageBoxA to "add esp,0x10;nop;nop"
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x5DB81), &EPOutsideFix, sizeof(EPOutsideFix), NULL);
-    if(fixed) _Addtolist(0,-1,"Patched EP outside of code message at 0x3A1FB");
+    if(fixed) Addtolist(0,-1,"Patched EP outside of code message at 0x3A1FB");
 }
 
 //taken from POISON source https://tuts4you.com/download.php?view.2281
@@ -220,7 +220,7 @@ void hookOllyBreakpoints()
     BYTE call[] = {0xE8};
     WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+patchAddr), &call, sizeof(call), NULL);
 
-    _Addtolist(0,-1,"Hooked Olly Breakpoints handler for TLS at 0x2F918");
+    Addtolist(0,-1,"Hooked Olly Breakpoints handler for TLS at 0x2F918");
 }
 
 void __declspec(naked) handleBreakpoints()
@@ -251,7 +251,7 @@ DWORD _stdcall removeEPBreak(LPVOID lpParam)
     Sleep(0x200);
     if (epaddr != NULL)
     {
-        _Deletebreakpoints(epaddr,epaddr+2, 0);
+        Deletebreakpoints(epaddr,epaddr+2, 0);
     }
     return 0;
 }
@@ -291,11 +291,11 @@ void ReadTlsAndSetBreakpoints(DWORD dwProcessId, LPVOID baseofImage)
                     if (callbacks[i])
                     {
                         g_log.LogInfo(L"TLS callback found: Index %d Address %X", i, callbacks[i]);
-                        _Tempbreakpoint((DWORD)callbacks[i], TY_ONESHOT);
+                        Tempbreakpoint((DWORD)callbacks[i], TY_ONESHOT);
 
 						sprintf(label, "TLS_CALLBACK_%d", i+1);
-						_Insertname((DWORD)callbacks[i], NM_LABEL, label);
-						_Insertname((DWORD)callbacks[i], NM_COMMENT, label);
+						Insertname((DWORD)callbacks[i], NM_LABEL, label);
+						Insertname((DWORD)callbacks[i], NM_COMMENT, label);
                     }
                     else
                     {
@@ -619,7 +619,7 @@ void fixBadPEImage()
     patchAddr = 0x5d7c9;
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+patchAddr), &nopjmp, sizeof(nopjmp), NULL);
 
-    if(fixed) _Addtolist(0,-1,"Patched bad PE image error");
+    if(fixed) Addtolist(0,-1,"Patched bad PE image error");
 }
 
 void skipCompressedCode()
@@ -673,12 +673,12 @@ void fixNTSymbols()
     //00491107  81CA 10120000    OR EDX,1210
     BYTE ntSym1Fix[] = {0x37,0x02,0x03,0x80}; // change 10120000 to 37020380
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x91109), &ntSym1Fix, sizeof(ntSym1Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed load NT Symbols at 0x91109");
+    if(fixed) Addtolist(0,-1,"Fixed load NT Symbols at 0x91109");
 
     //004911EC  74 2E  JE 0049121C
     BYTE ntSym2Fix[] = {0xEB}; // change 74 to eb
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x911EC), &ntSym2Fix, sizeof(ntSym2Fix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed load NT Symbols at 0x911EC");
+    if(fixed) Addtolist(0,-1,"Fixed load NT Symbols at 0x911EC");
 }
 
 void fixFaultyHandleOnExit()
@@ -689,13 +689,13 @@ void fixFaultyHandleOnExit()
 
     BYTE faultyHandleFix[] = {0xEB}; //JNZ (75 4D) to JMP (EB 4D)
     fixed = WriteProcessMemory(hOlly, (LPVOID)(lpBaseAddr+0x7599f), &faultyHandleFix, sizeof(faultyHandleFix), NULL);
-    if(fixed) _Addtolist(0,-1,"Fixed ERROR_ACCESS_DENIED with faulty handle at 0x7599f");
+    if(fixed) Addtolist(0,-1,"Fixed ERROR_ACCESS_DENIED with faulty handle at 0x7599f");
 }
 
 void hookOllyWindowProcs()
 {
-    t_dump* dump = (t_dump*) _Plugingetvalue(VAL_CPUDDUMP);
-    t_dump* dasm = (t_dump*) _Plugingetvalue(VAL_CPUDASM);
+    t_dump* dump = (t_dump*) Plugingetvalue(VAL_CPUDDUMP);
+    t_dump* dasm = (t_dump*) Plugingetvalue(VAL_CPUDASM);
     hDump = dump->table.hw;
     hDasm = dasm->table.hw;
 
@@ -715,7 +715,7 @@ void memsetRemoteMemory(DWORD startAddress, DWORD endAddress, BYTE byte)
 		if (tempmem)
 		{
 			memset(tempmem,byte,len);
-			_Writememory(tempmem, startAddress, len, MM_RESTORE | MM_DELANAL);
+			Writememory(tempmem, startAddress, len, MM_RESTORE | MM_DELANAL);
 			free(tempmem);
 		}
 	}
@@ -729,7 +729,7 @@ void hookedOllyWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } else {
         window = VAL_CPUDDUMP;
     }
-    t_dump* dump = (t_dump*) _Plugingetvalue(window);
+    t_dump* dump = (t_dump*) Plugingetvalue(window);
 
 	if (!dump)
 	{
@@ -745,7 +745,7 @@ void hookedOllyWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         DWORD startAddr = dump->sel0;
         DWORD endAddr = dump->sel1;
 
-        t_module* module = _Findmodule(startAddr);
+        t_module* module = Findmodule(startAddr);
 
         char modName[20] = "unknown";
         char sectName[20] = "unknown";
@@ -766,7 +766,7 @@ void hookedOllyWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
 
-        _Infoline("VA: 0x%08X -> 0x%08X | Size: 0x%08X Bytes | Module: [%s]%s", startAddr, endAddr, endAddr-startAddr, modName, sectName);
+        Infoline("VA: 0x%08X -> 0x%08X | Size: 0x%08X Bytes | Module: [%s]%s", startAddr, endAddr, endAddr-startAddr, modName, sectName);
     }
     else if(message == WM_KEYUP) {
         switch(wParam) {
@@ -776,7 +776,7 @@ void hookedOllyWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				if (dump->backup == 0)
 				{
-					_Dumpbackup(dump, BKUP_CREATE);
+					Dumpbackup(dump, BKUP_CREATE);
 				}
 
 				memsetRemoteMemory(startAddr, endAddr, 0x90);
@@ -789,7 +789,7 @@ void hookedOllyWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				if (dump->backup == 0)
 				{
-					_Dumpbackup(dump, BKUP_CREATE);
+					Dumpbackup(dump, BKUP_CREATE);
 				}
 
 				memsetRemoteMemory(startAddr, endAddr, 0x00);

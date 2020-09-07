@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 #pragma pack(push)
-#include <ollydbg1/ollyplugindefinitions.h>
+#include <ollydbg1/Plugin.h>
 #pragma pack(pop)
 
 #define ADDR_TYPE_RVA 2

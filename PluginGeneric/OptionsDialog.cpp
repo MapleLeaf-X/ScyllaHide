@@ -11,7 +11,7 @@
 
 #ifdef OLLY1
 #pragma pack(push)
-#include <ollydbg1/ollyplugindefinitions.h>
+#include <ollydbg1/Plugin.h>
 #pragma pack(pop)
 #include "..\ScyllaHideOlly1Plugin\resource.h"
 
@@ -621,7 +621,7 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 #ifdef OLLY1
             std::string strNewProfileName;
             strNewProfileName.resize(MAX_PATH);
-            if (_Gettext("New profile name?", &strNewProfileName[0], 0, 0, 0) <= 0)
+            if (Gettext("New profile name?", &strNewProfileName[0], 0, 0, 0) <= 0)
                 break;
             wstrNewProfileName = scl::wstr_conv().from_bytes(strNewProfileName.c_str());
 
