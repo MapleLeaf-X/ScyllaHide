@@ -23,9 +23,12 @@
 
 #elif defined(__IDP__)
 //#define BUILD_IDA_64BIT 1
+#pragma warning(push, 4)
+#pragma warning(disable: 4267 4244 4201)
 #include <ida.hpp>
 #include <idp.hpp>
 #include <dbg.hpp>
+#pragma warning(pop)
 #include "..\ScyllaHideIDAProPlugin\IdaServerClient.h"
 #include "..\PluginGeneric\AttachDialog.h"
 #include "..\ScyllaHideIDAProPlugin\resource.h"

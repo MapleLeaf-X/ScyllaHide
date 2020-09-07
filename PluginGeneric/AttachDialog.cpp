@@ -9,7 +9,10 @@
 #include <ollydbg2/plugin.h>
 #elif __IDP__
 #include "..\ScyllaHideIDAProPlugin\resource.h"
+#pragma warning(push, 4)
+#pragma warning(disable: 4267 4244 4201)
 #include <idp.hpp>
+#pragma warning(pop)
 #elif X64DBG
 #include "..\ScyllaHideX64DBGPlugin\resource.h"
 #endif
