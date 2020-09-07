@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IDASERVER_H
+#define IDASERVER_H
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -13,4 +14,5 @@ BOOL startWinsock();
 void startListen();
 void handleClient( SOCKET ClientSocket );
 
+#endif // IDASERVER_H
 
