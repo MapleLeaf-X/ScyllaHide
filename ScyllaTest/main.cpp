@@ -440,8 +440,8 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted) {
 	const USHORT defaultColours = consoleBufferInfo.wAttributes;
 
 	const ULONG pad = charsPrinted <= 48 ? 48 - charsPrinted : 0;
-	//for (ULONG i = 0; i < pad; ++i)
-	//	printf(" ");
+	for(ULONG i = 0; i < pad; ++i)
+		printf(" ");
 
 	switch(result) {
 	case ScyllaTestOk:
@@ -477,14 +477,14 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted) {
 
 static bool OpenConsole() {
 	if(!AllocConsole()) {
-		auto text = L"Failed to allocate console: " + scl::FormatMessageW(GetLastError());
-		MessageBoxW(HWND_DESKTOP, text.c_str(), L"Error", MB_ICONERROR);
+		auto text = TEXT("Failed to allocate console: ") + scl::FormatMessageW(GetLastError());
+		MessageBox(HWND_DESKTOP, text.c_str(), L"Error", MB_ICONERROR);
 		return false;
 	}
 
-	freopen("CONIN$", "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
+	std::freopen("CONIN$", "r", stdin);
+	std::freopen("CONOUT$", "w", stdout);
+	std::freopen("CONOUT$", "w", stderr);
 
 	if(!SetConsoleCtrlHandler(CtrlHandler, TRUE))
 		return false;
@@ -510,7 +510,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	WCHAR title[64];
 	_snwprintf_s(title, sizeof(title), L"[ScyllaTest] PID: %u", (ULONG)(ULONG_PTR)NtCurrentTeb()->ClientId.UniqueProcess);
-	SetConsoleTitleW(title);
+	SetConsoleTitle(title);
 
 	auto is_wow64 = scl::IsWow64Process(g_proc_handle);
 	if(!NT_SUCCESS(NtCreateEvent(&g_stopEvent, EVENT_ALL_ACCESS, nullptr, NotificationEvent, FALSE)))
