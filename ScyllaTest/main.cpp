@@ -483,7 +483,7 @@ static bool OpenConsole() {
 	std::freopen("CONOUT$", "w", stdout);
 	std::freopen("CONOUT$", "w", stderr);
 
-	if(!SetConsoleCtrlHandler(CtrlHandler, TRUE))
+	if(!::SetConsoleCtrlHandler(CtrlHandler, TRUE))
 		return false;
 
 	return true;
