@@ -60,7 +60,7 @@ bool scl::IsWindows64() {
 
 bool scl::IsWow64Process(HANDLE hProcess) {
 	auto fIsWow64 = FALSE;
-	return ::IsWow64Process(hProcess, &fIsWow64) && (fIsWow64 == TRUE);
+	return ::IsWow64Process(hProcess, &fIsWow64) && fIsWow64;
 }
 
 scl::eOsVersion scl::GetWindowsVersion() {
