@@ -5,8 +5,7 @@
 #include <Scylla/Peb.h>
 #include <Scylla/Util.h>
 
-enum ScyllaTestResult
-{
+enum ScyllaTestResult {
 	ScyllaTestOk = 0,
 	ScyllaTestFail,
 	ScyllaTestDetected,
@@ -24,23 +23,20 @@ constexpr auto is_x64 = false;
 
 static HANDLE g_proc_handle, g_stopEvent;
 
-static BOOL NTAPI CtrlHandler(ULONG)
-{
+static BOOL NTAPI CtrlHandler(ULONG) {
 	// Signal test stop, and don't pass to next handler
 	NtSetEvent(g_stopEvent, nullptr);
 	return TRUE;
 }
 
-static HANDLE GetRealCurrentProcess()
-{
+static HANDLE GetRealCurrentProcess() {
 	auto pseudo_handle = GetCurrentProcess();
 	auto hRealHandle = INVALID_HANDLE_VALUE;
 	DuplicateHandle(pseudo_handle, pseudo_handle, pseudo_handle, &hRealHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	return hRealHandle;
 }
 
-static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
-{
+static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount) {
 	*otherOperationCount = 0;
 	ULONGLONG otherOperationCountSystemProcessInformation = 0,
 		otherOperationCountSystemExtendedProcessInformation = 0,
@@ -49,14 +45,13 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
 	// NtQSI(SystemProcessInformation)
 	ULONG size;
 	NTSTATUS status = NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
-	if (status != STATUS_INFO_LENGTH_MISMATCH)
+	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 	const PSYSTEM_PROCESS_INFORMATION SystemProcessInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
-	if (SystemProcessInfo == nullptr)
+	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
 	status = NtQuerySystemInformation(SystemProcessInformation, SystemProcessInfo, size * 2, nullptr);
-	if (!NT_SUCCESS(status))
-	{
+	if(!NT_SUCCESS(status)) {
 		RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
 		return status;
 	}
@@ -64,34 +59,31 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
 	PSYSTEM_PROCESS_INFORMATION entry = SystemProcessInfo;
 	status = STATUS_NOT_FOUND;
 
-	while (true)
-	{
-		if (entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess)
-		{
+	while(true) {
+		if(entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess) {
 			otherOperationCountSystemProcessInformation = entry->OtherOperationCount.QuadPart;
 			status = STATUS_SUCCESS;
 			break;
 		}
-		
-		if (entry->NextEntryOffset == 0)
+
+		if(entry->NextEntryOffset == 0)
 			break;
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
 	RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
-	if (!NT_SUCCESS(status))
+	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQSI(SystemExtendedProcessInformation)
 	status = NtQuerySystemInformation(SystemExtendedProcessInformation, nullptr, 0, &size);
-	if (status != STATUS_INFO_LENGTH_MISMATCH)
+	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 	const PSYSTEM_PROCESS_INFORMATION systemExtendedProcessInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
-	if (SystemProcessInfo == nullptr)
+	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
 	status = NtQuerySystemInformation(SystemExtendedProcessInformation, systemExtendedProcessInfo, size * 2, nullptr);
-	if (!NT_SUCCESS(status))
-	{
+	if(!NT_SUCCESS(status)) {
 		RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
 		return status;
 	}
@@ -99,36 +91,33 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
 	entry = systemExtendedProcessInfo;
 	status = STATUS_NOT_FOUND;
 
-	while (true)
-	{
-		if (entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess)
-		{
+	while(true) {
+		if(entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess) {
 			otherOperationCountSystemExtendedProcessInformation = entry->OtherOperationCount.QuadPart;
 			status = STATUS_SUCCESS;
 			break;
 		}
-		
-		if (entry->NextEntryOffset == 0)
+
+		if(entry->NextEntryOffset == 0)
 			break;
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
 	RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
-	if (!NT_SUCCESS(status))
+	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQSI(SystemSessionProcessInformation)
-	SYSTEM_SESSION_PROCESS_INFORMATION sessionProcessInfo = { NtCurrentPeb()->SessionId, sizeof(SYSTEM_SESSION_PROCESS_INFORMATION), &sessionProcessInfo };
+	SYSTEM_SESSION_PROCESS_INFORMATION sessionProcessInfo = {NtCurrentPeb()->SessionId, sizeof(SYSTEM_SESSION_PROCESS_INFORMATION), &sessionProcessInfo};
 	status = NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), &sessionProcessInfo.SizeOfBuf);
-	if (status != STATUS_INFO_LENGTH_MISMATCH)
+	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 	sessionProcessInfo.SizeOfBuf *= 2;
 	sessionProcessInfo.Buffer = RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sessionProcessInfo.SizeOfBuf);
-	if (SystemProcessInfo == nullptr)
+	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
 	status = NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), nullptr);
-	if (!NT_SUCCESS(status))
-	{
+	if(!NT_SUCCESS(status)) {
 		RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
 		return status;
 	}
@@ -136,32 +125,30 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
 	entry = (PSYSTEM_PROCESS_INFORMATION)sessionProcessInfo.Buffer;
 	status = STATUS_NOT_FOUND;
 
-	while (true)
-	{
-		if (entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess)
-		{
+	while(true) {
+		if(entry->UniqueProcessId == NtCurrentTeb()->ClientId.UniqueProcess) {
 			otherOperationCountSystemSessionProcessInformation = entry->OtherOperationCount.QuadPart;
 			status = STATUS_SUCCESS;
 			break;
 		}
-		
-		if (entry->NextEntryOffset == 0)
+
+		if(entry->NextEntryOffset == 0)
 			break;
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
 	RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
-	if (!NT_SUCCESS(status))
+	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQIP(IoCounters)
 	IO_COUNTERS ioCounters;
 	status = NtQueryInformationProcess(g_proc_handle, ProcessIoCounters, &ioCounters, sizeof(ioCounters), nullptr);
-	if (!NT_SUCCESS(status))
+	if(!NT_SUCCESS(status))
 		return status;
 
 	// All four counts should be the same
-	if (otherOperationCountSystemProcessInformation != otherOperationCountSystemExtendedProcessInformation ||
+	if(otherOperationCountSystemProcessInformation != otherOperationCountSystemExtendedProcessInformation ||
 		otherOperationCountSystemProcessInformation != otherOperationCountSystemSessionProcessInformation ||
 		otherOperationCountSystemProcessInformation != ioCounters.OtherOperationCount)
 		return STATUS_DATA_NOT_ACCEPTED;
@@ -171,59 +158,52 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount)
 	return STATUS_SUCCESS;
 }
 
-static ScyllaTestResult Check_PEB_BeingDebugged()
-{
+static ScyllaTestResult Check_PEB_BeingDebugged() {
 	const auto peb = scl::GetPebAddress(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb);
 	return SCYLLA_TEST_CHECK(peb->BeingDebugged == 0);
 }
 
-static ScyllaTestResult Check_Wow64PEB64_BeingDebugged()
-{
+static ScyllaTestResult Check_Wow64PEB64_BeingDebugged() {
 	const auto peb64 = scl::Wow64GetPeb64(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb64);
 
 	return SCYLLA_TEST_CHECK(peb64->BeingDebugged == 0);
 }
 
-static ScyllaTestResult Check_PEB_NtGlobalFlag()
-{
+static ScyllaTestResult Check_PEB_NtGlobalFlag() {
 	const DWORD bad_flags = FLG_HEAP_ENABLE_TAIL_CHECK | FLG_HEAP_ENABLE_FREE_CHECK | FLG_HEAP_VALIDATE_PARAMETERS;
 	const auto peb = scl::GetPebAddress(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb);
 	return SCYLLA_TEST_CHECK((peb->NtGlobalFlag & bad_flags) == 0);
 }
 
-static ScyllaTestResult Check_Wow64PEB64_NtGlobalFlag()
-{
+static ScyllaTestResult Check_Wow64PEB64_NtGlobalFlag() {
 	const DWORD bad_flags = FLG_HEAP_ENABLE_TAIL_CHECK | FLG_HEAP_ENABLE_FREE_CHECK | FLG_HEAP_VALIDATE_PARAMETERS;
 	const auto peb64 = scl::Wow64GetPeb64(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb64);
 	return SCYLLA_TEST_CHECK((peb64->NtGlobalFlag & bad_flags) == 0);
 }
 
-static ScyllaTestResult Check_PEB_HeapFlags()
-{
+static ScyllaTestResult Check_PEB_HeapFlags() {
 	const DWORD bad_flags = HEAP_TAIL_CHECKING_ENABLED | HEAP_FREE_CHECKING_ENABLED | HEAP_SKIP_VALIDATION_CHECKS | HEAP_VALIDATE_PARAMETERS_ENABLED;
 
 	const auto peb = scl::GetPebAddress(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb);
 
-	auto heaps = (void **)peb->ProcessHeaps;
-	for (DWORD i = 0; i < peb->NumberOfHeaps; i++)
-	{
-		auto flags = *(DWORD *)((BYTE *)heaps[i] + scl::GetHeapFlagsOffset(is_x64));
-		auto force_flags = *(DWORD *)((BYTE *)heaps[i] + scl::GetHeapForceFlagsOffset(is_x64));
+	auto heaps = (void**)peb->ProcessHeaps;
+	for(DWORD i = 0; i < peb->NumberOfHeaps; i++) {
+		auto flags = *(DWORD*)((BYTE*)heaps[i] + scl::GetHeapFlagsOffset(is_x64));
+		auto force_flags = *(DWORD*)((BYTE*)heaps[i] + scl::GetHeapForceFlagsOffset(is_x64));
 
-		if ((flags & bad_flags) || (force_flags & bad_flags))
+		if((flags & bad_flags) || (force_flags & bad_flags))
 			return ScyllaTestDetected;
 	}
 
 	return ScyllaTestOk;
 }
 
-static ScyllaTestResult Check_Wow64PEB64_HeapFlags()
-{
+static ScyllaTestResult Check_Wow64PEB64_HeapFlags() {
 	const DWORD bad_flags = HEAP_TAIL_CHECKING_ENABLED | HEAP_FREE_CHECKING_ENABLED | HEAP_SKIP_VALIDATION_CHECKS | HEAP_VALIDATE_PARAMETERS_ENABLED;
 	const auto peb64 = scl::Wow64GetPeb64(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb64);
@@ -231,36 +211,33 @@ static ScyllaTestResult Check_Wow64PEB64_HeapFlags()
 	std::basic_string<PVOID64> heaps64;
 	heaps64.resize(peb64->NumberOfHeaps);
 
-	SCYLLA_TEST_FAIL_IF(!scl::Wow64ReadProcessMemory64(g_proc_handle, (PVOID64)peb64->ProcessHeaps, (PVOID)heaps64.data(), heaps64.size()*sizeof(PVOID64), nullptr));
+	SCYLLA_TEST_FAIL_IF(!scl::Wow64ReadProcessMemory64(g_proc_handle, (PVOID64)peb64->ProcessHeaps, (PVOID)heaps64.data(), heaps64.size() * sizeof(PVOID64), nullptr));
 
 	std::basic_string<uint8_t> heap;
 	heap.resize(0x100); // hacky
-	for (DWORD i = 0; i < peb64->NumberOfHeaps; i++)
-	{
+	for(DWORD i = 0; i < peb64->NumberOfHeaps; i++) {
 		SCYLLA_TEST_FAIL_IF(!scl::Wow64ReadProcessMemory64(g_proc_handle, heaps64[i], (PVOID)heap.data(), heap.size(), nullptr));
 
-		auto flags = *(DWORD *)(heap.data() + scl::GetHeapFlagsOffset(true));
-		auto force_flags = *(DWORD *)(heap.data() + scl::GetHeapForceFlagsOffset(true));
+		auto flags = *(DWORD*)(heap.data() + scl::GetHeapFlagsOffset(true));
+		auto force_flags = *(DWORD*)(heap.data() + scl::GetHeapForceFlagsOffset(true));
 
-		if ((flags & bad_flags) || (force_flags & bad_flags))
+		if((flags & bad_flags) || (force_flags & bad_flags))
 			return ScyllaTestDetected;
 	}
 
 	return ScyllaTestOk;
 }
 
-static ScyllaTestResult Check_PEB_ProcessParameters()
-{
+static ScyllaTestResult Check_PEB_ProcessParameters() {
 	const auto peb = scl::GetPebAddress(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb);
 
-	auto rupp = (scl::RTL_USER_PROCESS_PARAMETERS<DWORD_PTR> *)peb->ProcessParameters;
+	auto rupp = (scl::RTL_USER_PROCESS_PARAMETERS<DWORD_PTR>*)peb->ProcessParameters;
 
 	return SCYLLA_TEST_CHECK((rupp->Flags & 0x4000) != 0);
 }
 
-static ScyllaTestResult Check_Wow64PEB64_ProcessParameters()
-{
+static ScyllaTestResult Check_Wow64PEB64_ProcessParameters() {
 	const auto peb64 = scl::GetPebAddress(g_proc_handle);
 	SCYLLA_TEST_FAIL_IF(!peb64);
 
@@ -271,48 +248,41 @@ static ScyllaTestResult Check_Wow64PEB64_ProcessParameters()
 	return SCYLLA_TEST_CHECK((rupp.Flags & 0x4000) != 0);
 }
 
-static ScyllaTestResult Check_IsDebuggerPresent()
-{
+static ScyllaTestResult Check_IsDebuggerPresent() {
 	return SCYLLA_TEST_CHECK(!IsDebuggerPresent());
 }
 
-static ScyllaTestResult Check_CheckRemoteDebuggerPresent()
-{
+static ScyllaTestResult Check_CheckRemoteDebuggerPresent() {
 	BOOL present;
 	CheckRemoteDebuggerPresent(g_proc_handle, &present);
 	return SCYLLA_TEST_CHECK(!present);
 }
 
-static ScyllaTestResult Check_OutputDebugStringA_LastError()
-{
+static ScyllaTestResult Check_OutputDebugStringA_LastError() {
 	const DWORD last_error = 0xDEAD;
 	SetLastError(last_error);
 	OutputDebugStringA("test");
 	return SCYLLA_TEST_CHECK(GetLastError() != last_error);
 }
 
-static ScyllaTestResult Check_OutputDebugStringA_Exception()
-{
+static ScyllaTestResult Check_OutputDebugStringA_Exception() {
 	char text[] = "test";
 	ULONG_PTR args[2];
 	args[0] = (ULONG_PTR)strlen(text) + 1;
 	args[1] = (ULONG_PTR)text;
 
-	__try
-	{
+	__try {
 		RaiseException(DBG_PRINTEXCEPTION_C, 0, 2, args);
 		return ScyllaTestDetected;
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
+	__except(EXCEPTION_EXECUTE_HANDLER) {
 		return ScyllaTestOk;
 	}
 }
 
-static ScyllaTestResult Check_OutputDebugStringW_Exception()
-{
+static ScyllaTestResult Check_OutputDebugStringW_Exception() {
 	wchar_t text_w[] = L"test";
-	char text_a[_countof(text_w)] = { 0 };
+	char text_a[_countof(text_w)] = {0};
 	WideCharToMultiByte(CP_ACP, 0, text_w, -1, text_a, sizeof(text_a), nullptr, nullptr);
 
 	ULONG_PTR args[4];
@@ -322,50 +292,44 @@ static ScyllaTestResult Check_OutputDebugStringW_Exception()
 	args[2] = (ULONG_PTR)strlen(text_a) + 1;
 	args[3] = (ULONG_PTR)text_a;
 
-	__try
-	{
+	__try {
 		RaiseException(DBG_PRINTEXCEPTION_WIDE_C, 0, 4, args);
 		return ScyllaTestDetected;
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
+	__except(EXCEPTION_EXECUTE_HANDLER) {
 		return ScyllaTestOk;
 	}
 }
 
-static ScyllaTestResult Check_NtQueryInformationProcess_ProcessDebugPort()
-{
+static ScyllaTestResult Check_NtQueryInformationProcess_ProcessDebugPort() {
 	HANDLE handle = nullptr;
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQueryInformationProcess(g_proc_handle, ProcessDebugPort, &handle, sizeof(handle), nullptr)));
 	return SCYLLA_TEST_CHECK(handle == nullptr);
 }
 
-static ScyllaTestResult Check_NtQuerySystemInformation_KernelDebugger()
-{
+static ScyllaTestResult Check_NtQuerySystemInformation_KernelDebugger() {
 	SYSTEM_KERNEL_DEBUGGER_INFORMATION SysKernDebInfo;
 
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQuerySystemInformation(SystemKernelDebuggerInformation, &SysKernDebInfo, sizeof(SysKernDebInfo), NULL)));
 
-	if (SysKernDebInfo.KernelDebuggerEnabled || !SysKernDebInfo.KernelDebuggerNotPresent)
-	{
+	if(SysKernDebInfo.KernelDebuggerEnabled || !SysKernDebInfo.KernelDebuggerNotPresent) {
 		return ScyllaTestDetected;
 	}
 	return ScyllaTestOk;
 }
 
-static ScyllaTestResult Check_NtQuery_OverlappingReturnLength() // https://github.com/x64dbg/ScyllaHide/issues/47
-{
+static ScyllaTestResult Check_NtQuery_OverlappingReturnLength() { // https://github.com/x64dbg/ScyllaHide/issues/47
 	UCHAR Buffer[sizeof(OBJECT_TYPE_INFORMATION) + 64];
 	RtlZeroMemory(Buffer, sizeof(Buffer));
 	PULONG pReturnLength = (PULONG)&Buffer[0];
 
 	NTSTATUS Status = NtQueryInformationProcess(g_proc_handle, ProcessDebugObjectHandle, Buffer, sizeof(HANDLE), pReturnLength);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(Status) && Status != STATUS_PORT_NOT_SET);
-	if (*pReturnLength != sizeof(HANDLE))
+	if(*pReturnLength != sizeof(HANDLE))
 		return ScyllaTestDetected;
 
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQuerySystemInformation(SystemKernelDebuggerInformation, Buffer, sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION), pReturnLength)));
-	if (*pReturnLength != sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION))
+	if(*pReturnLength != sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION))
 		return ScyllaTestDetected;
 
 	HANDLE DebugObjectHandle;
@@ -373,7 +337,7 @@ static ScyllaTestResult Check_NtQuery_OverlappingReturnLength() // https://githu
 
 	pReturnLength = (PULONG)(Buffer + FIELD_OFFSET(OBJECT_TYPE_INFORMATION, TotalNumberOfObjects)); // Where TotalNumberOfObjects would be
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQueryObject(DebugObjectHandle, ObjectTypeInformation, Buffer, sizeof(Buffer), pReturnLength)));
-	if (*pReturnLength < sizeof(OBJECT_TYPE_INFORMATION) + sizeof(ULONG))
+	if(*pReturnLength < sizeof(OBJECT_TYPE_INFORMATION) + sizeof(ULONG))
 		return ScyllaTestDetected;
 
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtClose(DebugObjectHandle)));
@@ -381,58 +345,53 @@ static ScyllaTestResult Check_NtQuery_OverlappingReturnLength() // https://githu
 	return ScyllaTestOk;
 }
 
-static ScyllaTestResult Check_NtClose()
-{
-	__try
-	{
+static ScyllaTestResult Check_NtClose() {
+	__try {
 		NtClose((HANDLE)(ULONG_PTR)0x1337);
 		return ScyllaTestOk;
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
+	__except(EXCEPTION_EXECUTE_HANDLER) {
 		return GetExceptionCode() == EXCEPTION_INVALID_HANDLE
 			? ScyllaTestDetected
 			: ScyllaTestFail;
 	}
 }
 
-static ScyllaTestResult Check_OtherOperationCount() // https://everdox.blogspot.com/2013/11/debugger-detection-with.html
-{
+static ScyllaTestResult Check_OtherOperationCount() { // https://everdox.blogspot.com/2013/11/debugger-detection-with.html
 	// Open some file
 	IO_STATUS_BLOCK ioStatusBlock;
 	UNICODE_STRING ntdllPath = RTL_CONSTANT_STRING(L"\\SystemRoot\\System32\\ntdll.dll");
 	OBJECT_ATTRIBUTES objectAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES((PUNICODE_STRING)&ntdllPath, OBJ_CASE_INSENSITIVE);
 	HANDLE fileHandle;
 	NTSTATUS status = NtCreateFile(&fileHandle,
-								SYNCHRONIZE | FILE_EXECUTE,
-								&objectAttributes,
-								&ioStatusBlock,
-								nullptr,
-								FILE_ATTRIBUTE_NORMAL,
-								FILE_SHARE_READ,
-								FILE_OPEN,
-								FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
-								nullptr,
-								0);
+		SYNCHRONIZE | FILE_EXECUTE,
+		&objectAttributes,
+		&ioStatusBlock,
+		nullptr,
+		FILE_ATTRIBUTE_NORMAL,
+		FILE_SHARE_READ,
+		FILE_OPEN,
+		FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+		nullptr,
+		0);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
 	// Create section. Must be SEC_IMAGE, not SEC_COMMIT
 	HANDLE SectionHandle;
 	status = NtCreateSection(&SectionHandle,
-							SECTION_MAP_EXECUTE,
-							nullptr,
-							nullptr,
-							PAGE_EXECUTE,
-							SEC_IMAGE,
-							fileHandle);
+		SECTION_MAP_EXECUTE,
+		nullptr,
+		nullptr,
+		PAGE_EXECUTE,
+		SEC_IMAGE,
+		fileHandle);
 	NtClose(fileHandle);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
 	// Query other operation count (first go)
 	ULONGLONG otherOperationCountBefore;
 	status = GetOtherOperationCount(&otherOperationCountBefore);
-	if (!NT_SUCCESS(status))
-	{
+	if(!NT_SUCCESS(status)) {
 		NtClose(SectionHandle);
 		return status == STATUS_DATA_NOT_ACCEPTED
 			? ScyllaTestDetected
@@ -443,15 +402,15 @@ static ScyllaTestResult Check_OtherOperationCount() // https://everdox.blogspot.
 	PVOID baseAddress = nullptr;
 	SIZE_T viewSize = 0;
 	status = NtMapViewOfSection(SectionHandle,
-								g_proc_handle,
-								&baseAddress,
-								0, 
-								0,
-								nullptr,
-								&viewSize,
-								ViewUnmap,
-								0,
-								PAGE_EXECUTE);
+		g_proc_handle,
+		&baseAddress,
+		0,
+		0,
+		nullptr,
+		&viewSize,
+		ViewUnmap,
+		0,
+		PAGE_EXECUTE);
 	NtClose(SectionHandle);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
@@ -461,8 +420,7 @@ static ScyllaTestResult Check_OtherOperationCount() // https://everdox.blogspot.
 
 	NtUnmapViewOfSection(g_proc_handle, baseAddress);
 
-	if (!NT_SUCCESS(status))
-	{
+	if(!NT_SUCCESS(status)) {
 		return status == STATUS_DATA_NOT_ACCEPTED
 			? ScyllaTestDetected
 			: ScyllaTestFail;
@@ -474,11 +432,10 @@ static ScyllaTestResult Check_OtherOperationCount() // https://everdox.blogspot.
 		: ScyllaTestOk;
 }
 
-static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted)
-{
+static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted) {
 	// Neither stdout nor GetStdHandle() work and I cba with this kernel32/CRT shit anymore. Pay me
 	const HANDLE stdOut = NtCurrentPeb()->ProcessParameters->StandardOutput;
-	CONSOLE_SCREEN_BUFFER_INFO consoleBufferInfo = { sizeof(CONSOLE_SCREEN_BUFFER_INFO) };
+	CONSOLE_SCREEN_BUFFER_INFO consoleBufferInfo = {sizeof(CONSOLE_SCREEN_BUFFER_INFO)};
 	GetConsoleScreenBufferInfo(stdOut, &consoleBufferInfo);
 	const USHORT defaultColours = consoleBufferInfo.wAttributes;
 
@@ -486,8 +443,7 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted)
 	//for (ULONG i = 0; i < pad; ++i)
 	//	printf(" ");
 
-	switch (result)
-	{
+	switch(result) {
 	case ScyllaTestOk:
 	{
 		SetConsoleTextAttribute(stdOut, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
@@ -519,10 +475,8 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted)
 	SetConsoleTextAttribute(stdOut, defaultColours);
 }
 
-static bool OpenConsole()
-{
-	if (!AllocConsole())
-	{
+static bool OpenConsole() {
+	if(!AllocConsole()) {
 		auto text = L"Failed to allocate console: " + scl::FormatMessageW(GetLastError());
 		MessageBoxW(HWND_DESKTOP, text.c_str(), L"Error", MB_ICONERROR);
 		return false;
@@ -532,37 +486,34 @@ static bool OpenConsole()
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
 
-	if (!SetConsoleCtrlHandler(CtrlHandler, TRUE))
+	if(!SetConsoleCtrlHandler(CtrlHandler, TRUE))
 		return false;
 
 	return true;
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-{
-	if (!OpenConsole())
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	if(!OpenConsole())
 		return -1;
 
 	g_proc_handle = GetRealCurrentProcess();
-	if (g_proc_handle == INVALID_HANDLE_VALUE)
-	{
+	if(g_proc_handle == INVALID_HANDLE_VALUE) {
 		fprintf(stderr, "Failed to obtain real process handle.\n");
 		return -1;
 	}
 
 	auto ver = scl::GetWindowsVersion();
-	if (ver < scl::OS_WIN_XP)
-	{
+	if(ver < scl::OS_WIN_XP) {
 		fprintf(stderr, "Unsupported OS version.\n");
 		return -1;
 	}
-	
+
 	WCHAR title[64];
 	_snwprintf_s(title, sizeof(title), L"[ScyllaTest] PID: %u", (ULONG)(ULONG_PTR)NtCurrentTeb()->ClientId.UniqueProcess);
 	SetConsoleTitleW(title);
 
 	auto is_wow64 = scl::IsWow64Process(g_proc_handle);
-	if (!NT_SUCCESS(NtCreateEvent(&g_stopEvent, EVENT_ALL_ACCESS, nullptr, NotificationEvent, FALSE)))
+	if(!NT_SUCCESS(NtCreateEvent(&g_stopEvent, EVENT_ALL_ACCESS, nullptr, NotificationEvent, FALSE)))
 		return -1;
 
 #define SCYLLA_TEST_IF(condition, x)      \
@@ -572,11 +523,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #define SCYLLA_TEST(x) SCYLLA_TEST_IF(true, x)
 
 	printf("Starting test loop. Press CTRL+C or the power button on your PC to exit.\n\n");
-	while (true)
-	{
+	while(true) {
 		LARGE_INTEGER timeout;
 		timeout.QuadPart = -1LL * 10000LL * 1500LL; // 1500 ms
-		if (NtWaitForSingleObject(g_stopEvent, FALSE, &timeout) != STATUS_TIMEOUT)
+		if(NtWaitForSingleObject(g_stopEvent, FALSE, &timeout) != STATUS_TIMEOUT)
 			break;
 
 		printf("--------------------\n");
