@@ -30,9 +30,9 @@ static BOOL NTAPI CtrlHandler(ULONG) {
 }
 
 static HANDLE GetRealCurrentProcess() {
-	auto pseudo_handle = GetCurrentProcess();
+	auto pseudo_handle = ::GetCurrentProcess();
 	auto hRealHandle = INVALID_HANDLE_VALUE;
-	DuplicateHandle(pseudo_handle, pseudo_handle, pseudo_handle, &hRealHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+	::DuplicateHandle(pseudo_handle, pseudo_handle, pseudo_handle, &hRealHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
 	return hRealHandle;
 }
 
@@ -44,15 +44,15 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount) {
 
 	// NtQSI(SystemProcessInformation)
 	ULONG size;
-	NTSTATUS status = NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
+	NTSTATUS status = ::NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
 	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
-	const PSYSTEM_PROCESS_INFORMATION SystemProcessInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
+	const PSYSTEM_PROCESS_INFORMATION SystemProcessInfo = (PSYSTEM_PROCESS_INFORMATION)::RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
 	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
-	status = NtQuerySystemInformation(SystemProcessInformation, SystemProcessInfo, size * 2, nullptr);
+	status = ::NtQuerySystemInformation(SystemProcessInformation, SystemProcessInfo, size * 2, nullptr);
 	if(!NT_SUCCESS(status)) {
-		RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
+		::RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
 		return status;
 	}
 
@@ -71,20 +71,20 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount) {
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
-	RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
+	::RtlFreeHeap(RtlProcessHeap(), 0, SystemProcessInfo);
 	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQSI(SystemExtendedProcessInformation)
-	status = NtQuerySystemInformation(SystemExtendedProcessInformation, nullptr, 0, &size);
+	status = ::NtQuerySystemInformation(SystemExtendedProcessInformation, nullptr, 0, &size);
 	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
-	const PSYSTEM_PROCESS_INFORMATION systemExtendedProcessInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
+	const PSYSTEM_PROCESS_INFORMATION systemExtendedProcessInfo = (PSYSTEM_PROCESS_INFORMATION)::RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, size * 2);
 	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
-	status = NtQuerySystemInformation(SystemExtendedProcessInformation, systemExtendedProcessInfo, size * 2, nullptr);
+	status = ::NtQuerySystemInformation(SystemExtendedProcessInformation, systemExtendedProcessInfo, size * 2, nullptr);
 	if(!NT_SUCCESS(status)) {
-		RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
+		::RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
 		return status;
 	}
 
@@ -103,22 +103,22 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount) {
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
-	RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
+	::RtlFreeHeap(RtlProcessHeap(), 0, systemExtendedProcessInfo);
 	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQSI(SystemSessionProcessInformation)
 	SYSTEM_SESSION_PROCESS_INFORMATION sessionProcessInfo = {NtCurrentPeb()->SessionId, sizeof(SYSTEM_SESSION_PROCESS_INFORMATION), &sessionProcessInfo};
-	status = NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), &sessionProcessInfo.SizeOfBuf);
+	status = ::NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), &sessionProcessInfo.SizeOfBuf);
 	if(status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 	sessionProcessInfo.SizeOfBuf *= 2;
-	sessionProcessInfo.Buffer = RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sessionProcessInfo.SizeOfBuf);
+	sessionProcessInfo.Buffer = ::RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sessionProcessInfo.SizeOfBuf);
 	if(SystemProcessInfo == nullptr)
 		return STATUS_INSUFFICIENT_RESOURCES;
-	status = NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), nullptr);
+	status = ::NtQuerySystemInformation(SystemSessionProcessInformation, &sessionProcessInfo, sizeof(sessionProcessInfo), nullptr);
 	if(!NT_SUCCESS(status)) {
-		RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
+		::RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
 		return status;
 	}
 
@@ -137,13 +137,13 @@ static NTSTATUS GetOtherOperationCount(PULONGLONG otherOperationCount) {
 		entry = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)entry + entry->NextEntryOffset);
 	}
 
-	RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
+	::RtlFreeHeap(RtlProcessHeap(), 0, sessionProcessInfo.Buffer);
 	if(!NT_SUCCESS(status))
 		return status;
 
 	// NtQIP(IoCounters)
 	IO_COUNTERS ioCounters;
-	status = NtQueryInformationProcess(g_proc_handle, ProcessIoCounters, &ioCounters, sizeof(ioCounters), nullptr);
+	status = ::NtQueryInformationProcess(g_proc_handle, ProcessIoCounters, &ioCounters, sizeof(ioCounters), nullptr);
 	if(!NT_SUCCESS(status))
 		return status;
 
@@ -249,20 +249,20 @@ static ScyllaTestResult Check_Wow64PEB64_ProcessParameters() {
 }
 
 static ScyllaTestResult Check_IsDebuggerPresent() {
-	return SCYLLA_TEST_CHECK(!IsDebuggerPresent());
+	return SCYLLA_TEST_CHECK(!::IsDebuggerPresent());
 }
 
 static ScyllaTestResult Check_CheckRemoteDebuggerPresent() {
 	BOOL present;
-	CheckRemoteDebuggerPresent(g_proc_handle, &present);
+	::CheckRemoteDebuggerPresent(g_proc_handle, &present);
 	return SCYLLA_TEST_CHECK(!present);
 }
 
 static ScyllaTestResult Check_OutputDebugStringA_LastError() {
 	const DWORD last_error = 0xDEAD;
-	SetLastError(last_error);
-	OutputDebugStringA("test");
-	return SCYLLA_TEST_CHECK(GetLastError() != last_error);
+	::SetLastError(last_error);
+	::OutputDebugStringA("test");
+	return SCYLLA_TEST_CHECK(::GetLastError() != last_error);
 }
 
 static ScyllaTestResult Check_OutputDebugStringA_Exception() {
@@ -272,7 +272,7 @@ static ScyllaTestResult Check_OutputDebugStringA_Exception() {
 	args[1] = (ULONG_PTR)text;
 
 	__try {
-		RaiseException(DBG_PRINTEXCEPTION_C, 0, 2, args);
+		::RaiseException(DBG_PRINTEXCEPTION_C, 0, 2, args);
 		return ScyllaTestDetected;
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) {
@@ -283,7 +283,7 @@ static ScyllaTestResult Check_OutputDebugStringA_Exception() {
 static ScyllaTestResult Check_OutputDebugStringW_Exception() {
 	wchar_t text_w[] = L"test";
 	char text_a[_countof(text_w)] = {0};
-	WideCharToMultiByte(CP_ACP, 0, text_w, -1, text_a, sizeof(text_a), nullptr, nullptr);
+	::WideCharToMultiByte(CP_ACP, 0, text_w, -1, text_a, sizeof(text_a), nullptr, nullptr);
 
 	ULONG_PTR args[4];
 
@@ -293,7 +293,7 @@ static ScyllaTestResult Check_OutputDebugStringW_Exception() {
 	args[3] = (ULONG_PTR)text_a;
 
 	__try {
-		RaiseException(DBG_PRINTEXCEPTION_WIDE_C, 0, 4, args);
+		::RaiseException(DBG_PRINTEXCEPTION_WIDE_C, 0, 4, args);
 		return ScyllaTestDetected;
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) {
@@ -303,14 +303,16 @@ static ScyllaTestResult Check_OutputDebugStringW_Exception() {
 
 static ScyllaTestResult Check_NtQueryInformationProcess_ProcessDebugPort() {
 	HANDLE handle = nullptr;
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQueryInformationProcess(g_proc_handle, ProcessDebugPort, &handle, sizeof(handle), nullptr)));
+	auto status = ::NtQueryInformationProcess(g_proc_handle, ProcessDebugPort, &handle, sizeof(handle), nullptr);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 	return SCYLLA_TEST_CHECK(handle == nullptr);
 }
 
 static ScyllaTestResult Check_NtQuerySystemInformation_KernelDebugger() {
 	SYSTEM_KERNEL_DEBUGGER_INFORMATION SysKernDebInfo;
 
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQuerySystemInformation(SystemKernelDebuggerInformation, &SysKernDebInfo, sizeof(SysKernDebInfo), NULL)));
+	auto status = ::NtQuerySystemInformation(SystemKernelDebuggerInformation, &SysKernDebInfo, sizeof(SysKernDebInfo), nullptr);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
 	if(SysKernDebInfo.KernelDebuggerEnabled || !SysKernDebInfo.KernelDebuggerNotPresent) {
 		return ScyllaTestDetected;
@@ -319,35 +321,38 @@ static ScyllaTestResult Check_NtQuerySystemInformation_KernelDebugger() {
 }
 
 static ScyllaTestResult Check_NtQuery_OverlappingReturnLength() { // https://github.com/x64dbg/ScyllaHide/issues/47
-	UCHAR Buffer[sizeof(OBJECT_TYPE_INFORMATION) + 64];
-	RtlZeroMemory(Buffer, sizeof(Buffer));
-	PULONG pReturnLength = (PULONG)&Buffer[0];
+	UCHAR buffer[sizeof(OBJECT_TYPE_INFORMATION) + 64];
+	RtlZeroMemory(buffer, sizeof(buffer));
+	PULONG pReturnLength = (PULONG)&buffer[0];
 
-	NTSTATUS Status = NtQueryInformationProcess(g_proc_handle, ProcessDebugObjectHandle, Buffer, sizeof(HANDLE), pReturnLength);
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(Status) && Status != STATUS_PORT_NOT_SET);
+	auto status = ::NtQueryInformationProcess(g_proc_handle, ProcessDebugObjectHandle, buffer, sizeof(HANDLE), pReturnLength);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status) && status != STATUS_PORT_NOT_SET);
 	if(*pReturnLength != sizeof(HANDLE))
 		return ScyllaTestDetected;
 
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQuerySystemInformation(SystemKernelDebuggerInformation, Buffer, sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION), pReturnLength)));
+	status = ::NtQuerySystemInformation(SystemKernelDebuggerInformation, buffer, sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION), pReturnLength);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 	if(*pReturnLength != sizeof(SYSTEM_KERNEL_DEBUGGER_INFORMATION))
 		return ScyllaTestDetected;
 
 	HANDLE DebugObjectHandle;
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtCreateDebugObject(&DebugObjectHandle, DEBUG_ALL_ACCESS, nullptr, 0)));
+	status = ::NtCreateDebugObject(&DebugObjectHandle, DEBUG_ALL_ACCESS, nullptr, 0);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
-	pReturnLength = (PULONG)(Buffer + FIELD_OFFSET(OBJECT_TYPE_INFORMATION, TotalNumberOfObjects)); // Where TotalNumberOfObjects would be
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtQueryObject(DebugObjectHandle, ObjectTypeInformation, Buffer, sizeof(Buffer), pReturnLength)));
+	pReturnLength = (PULONG)(buffer + FIELD_OFFSET(OBJECT_TYPE_INFORMATION, TotalNumberOfObjects)); // Where TotalNumberOfObjects would be
+	status = ::NtQueryObject(DebugObjectHandle, ObjectTypeInformation, buffer, sizeof(buffer), pReturnLength);
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 	if(*pReturnLength < sizeof(OBJECT_TYPE_INFORMATION) + sizeof(ULONG))
 		return ScyllaTestDetected;
 
-	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(NtClose(DebugObjectHandle)));
+	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(::NtClose(DebugObjectHandle)));
 
 	return ScyllaTestOk;
 }
 
 static ScyllaTestResult Check_NtClose() {
 	__try {
-		NtClose((HANDLE)(ULONG_PTR)0x1337);
+		::NtClose((HANDLE)(ULONG_PTR)0x1337);
 		return ScyllaTestOk;
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) {
@@ -361,9 +366,9 @@ static ScyllaTestResult Check_OtherOperationCount() { // https://everdox.blogspo
 	// Open some file
 	IO_STATUS_BLOCK ioStatusBlock;
 	UNICODE_STRING ntdllPath = RTL_CONSTANT_STRING(L"\\SystemRoot\\System32\\ntdll.dll");
-	OBJECT_ATTRIBUTES objectAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES((PUNICODE_STRING)&ntdllPath, OBJ_CASE_INSENSITIVE);
+	OBJECT_ATTRIBUTES objectAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES(&ntdllPath, OBJ_CASE_INSENSITIVE);
 	HANDLE fileHandle;
-	NTSTATUS status = NtCreateFile(&fileHandle,
+	NTSTATUS status = ::NtCreateFile(&fileHandle,
 		SYNCHRONIZE | FILE_EXECUTE,
 		&objectAttributes,
 		&ioStatusBlock,
@@ -378,21 +383,21 @@ static ScyllaTestResult Check_OtherOperationCount() { // https://everdox.blogspo
 
 	// Create section. Must be SEC_IMAGE, not SEC_COMMIT
 	HANDLE SectionHandle;
-	status = NtCreateSection(&SectionHandle,
+	status = ::NtCreateSection(&SectionHandle,
 		SECTION_MAP_EXECUTE,
 		nullptr,
 		nullptr,
 		PAGE_EXECUTE,
 		SEC_IMAGE,
 		fileHandle);
-	NtClose(fileHandle);
+	::NtClose(fileHandle);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
 	// Query other operation count (first go)
 	ULONGLONG otherOperationCountBefore;
 	status = GetOtherOperationCount(&otherOperationCountBefore);
 	if(!NT_SUCCESS(status)) {
-		NtClose(SectionHandle);
+		::NtClose(SectionHandle);
 		return status == STATUS_DATA_NOT_ACCEPTED
 			? ScyllaTestDetected
 			: ScyllaTestFail;
@@ -401,7 +406,7 @@ static ScyllaTestResult Check_OtherOperationCount() { // https://everdox.blogspo
 	// Map a view of the section
 	PVOID baseAddress = nullptr;
 	SIZE_T viewSize = 0;
-	status = NtMapViewOfSection(SectionHandle,
+	status = ::NtMapViewOfSection(SectionHandle,
 		g_proc_handle,
 		&baseAddress,
 		0,
@@ -411,14 +416,14 @@ static ScyllaTestResult Check_OtherOperationCount() { // https://everdox.blogspo
 		ViewUnmap,
 		0,
 		PAGE_EXECUTE);
-	NtClose(SectionHandle);
+	::NtClose(SectionHandle);
 	SCYLLA_TEST_FAIL_IF(!NT_SUCCESS(status));
 
 	// Query other operation count (second go)
 	ULONGLONG otherOperationCountAfter;
 	status = GetOtherOperationCount(&otherOperationCountAfter);
 
-	NtUnmapViewOfSection(g_proc_handle, baseAddress);
+	::NtUnmapViewOfSection(g_proc_handle, baseAddress);
 
 	if(!NT_SUCCESS(status)) {
 		return status == STATUS_DATA_NOT_ACCEPTED
@@ -436,7 +441,7 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted) {
 	// Neither stdout nor GetStdHandle() work and I cba with this kernel32/CRT shit anymore. Pay me
 	const HANDLE stdOut = NtCurrentPeb()->ProcessParameters->StandardOutput;
 	CONSOLE_SCREEN_BUFFER_INFO consoleBufferInfo = {sizeof(CONSOLE_SCREEN_BUFFER_INFO)};
-	GetConsoleScreenBufferInfo(stdOut, &consoleBufferInfo);
+	::GetConsoleScreenBufferInfo(stdOut, &consoleBufferInfo);
 	const USHORT defaultColours = consoleBufferInfo.wAttributes;
 
 	const ULONG pad = charsPrinted <= 48 ? 48 - charsPrinted : 0;
@@ -445,40 +450,32 @@ static void PrintScyllaTestResult(ScyllaTestResult result, ULONG charsPrinted) {
 
 	switch(result) {
 	case ScyllaTestOk:
-	{
-		SetConsoleTextAttribute(stdOut, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+		::SetConsoleTextAttribute(stdOut, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 		printf("OK\n");
 		break;
-	}
 	case ScyllaTestFail:
-	{
-		SetConsoleTextAttribute(stdOut, FOREGROUND_RED | BACKGROUND_BLUE | FOREGROUND_INTENSITY);
+		::SetConsoleTextAttribute(stdOut, FOREGROUND_RED | BACKGROUND_BLUE | FOREGROUND_INTENSITY);
 		printf("FAIL\n");
 		break;
-	}
 	case ScyllaTestDetected:
-	{
-		SetConsoleTextAttribute(stdOut, FOREGROUND_RED | FOREGROUND_INTENSITY);
+		::SetConsoleTextAttribute(stdOut, FOREGROUND_RED | FOREGROUND_INTENSITY);
 		printf("DETECTED\n");
 		break;
-	}
 	case ScyllaTestSkip:
-	{
-		SetConsoleTextAttribute(stdOut, FOREGROUND_GREEN | FOREGROUND_BLUE);
+		::SetConsoleTextAttribute(stdOut, FOREGROUND_GREEN | FOREGROUND_BLUE);
 		printf("SKIP\n");
 		break;
-	}
 	default:
 		printf("UNKNOWN\n");
 		break;
 	}
-	SetConsoleTextAttribute(stdOut, defaultColours);
+	::SetConsoleTextAttribute(stdOut, defaultColours);
 }
 
 static bool OpenConsole() {
 	if(!AllocConsole()) {
 		auto text = TEXT("Failed to allocate console: ") + scl::FormatMessageW(GetLastError());
-		MessageBox(HWND_DESKTOP, text.c_str(), L"Error", MB_ICONERROR);
+		MessageBox(HWND_DESKTOP, text.c_str(), TEXT("Error"), MB_ICONERROR);
 		return false;
 	}
 
@@ -513,7 +510,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	SetConsoleTitle(title);
 
 	auto is_wow64 = scl::IsWow64Process(g_proc_handle);
-	if(!NT_SUCCESS(NtCreateEvent(&g_stopEvent, EVENT_ALL_ACCESS, nullptr, NotificationEvent, FALSE)))
+	if(!NT_SUCCESS(::NtCreateEvent(&g_stopEvent, EVENT_ALL_ACCESS, nullptr, NotificationEvent, FALSE)))
 		return -1;
 
 #define SCYLLA_TEST_IF(condition, x)      \
@@ -526,7 +523,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	while(true) {
 		LARGE_INTEGER timeout;
 		timeout.QuadPart = -1LL * 10000LL * 1500LL; // 1500 ms
-		if(NtWaitForSingleObject(g_stopEvent, FALSE, &timeout) != STATUS_TIMEOUT)
+		if(::NtWaitForSingleObject(g_stopEvent, FALSE, &timeout) != STATUS_TIMEOUT)
 			break;
 
 		printf("--------------------\n");
@@ -553,9 +550,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		printf("--------------------\n\n");
 	}
 
-	NtClose(g_stopEvent);
-	NtClose(g_proc_handle);
-	SetConsoleCtrlHandler(nullptr, FALSE);
-	FreeConsole();
+	::NtClose(g_stopEvent);
+	::NtClose(g_proc_handle);
+	::SetConsoleCtrlHandler(nullptr, FALSE);
+	::FreeConsole();
 	return 0;
 }
