@@ -18,7 +18,7 @@ EXPORTS
   _Createsorteddata                   @12
   _Decodeaddress                      @13
   _Decodecharacter                    @14
-  _Decodefullvarname                  @15          
+  _Decodefullvarname                  @15
   _Decodeknownargument                @16
   _Decodename                         @17
   _Decoderange                        @18
