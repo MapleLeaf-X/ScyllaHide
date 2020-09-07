@@ -21,7 +21,7 @@
  */
 
 const SYSTEM_INFO* scl::GetNativeSystemInfo() {
-	static SYSTEM_INFO si = { 0 };
+	static SYSTEM_INFO si = {0};
 	static auto cached = false;
 
 	if(!cached) {
@@ -73,35 +73,43 @@ scl::eOsVersion scl::GetWindowsVersion() {
 
 	const auto osVerInfo = scl::GetVersionExW();
 
-	if(osVerInfo->dwMajorVersion == 5) {
-		if(osVerInfo->dwMinorVersion == 0) {
+	switch(osVerInfo->dwMajorVersion) {
+	case 5:
+		switch(osVerInfo->dwMinorVersion) {
+		case 0:
 			version = OS_WIN_2000;
-		}
-		else if(osVerInfo->dwMinorVersion == 1) {
+			break;
+		case 1:
 			version = OS_WIN_XP;
-		}
-		else if(osVerInfo->dwMinorVersion == 2) {
+			break;
+		case 2:
 			version = OS_WIN_XP64;
+			break;
 		}
-	}
-	else if(osVerInfo->dwMajorVersion == 6) {
-		if(osVerInfo->dwMinorVersion == 0) {
+		break;
+	case 6:
+		switch(osVerInfo->dwMinorVersion) {
+		case 0:
 			version = OS_WIN_VISTA;
-		}
-		else if(osVerInfo->dwMinorVersion == 1) {
+			break;
+		case 1:
 			version = OS_WIN_7;
-		}
-		else if(osVerInfo->dwMinorVersion == 2) {
+			break;
+		case 2:
 			version = OS_WIN_8;
-		}
-		else if(osVerInfo->dwMinorVersion == 3) {
+			break;
+		case 3:
 			version = OS_WIN_81;
+			break;
 		}
-	}
-	else if(osVerInfo->dwMajorVersion == 10) {
-		if(osVerInfo->dwMinorVersion == 0) {
+		break;
+	case 10:
+		switch(osVerInfo->dwMinorVersion) {
+		case 0:
 			version = OS_WIN_10;
+			break;
 		}
+		break;
 	}
 
 	return version;
