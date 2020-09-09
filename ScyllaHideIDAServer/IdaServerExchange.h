@@ -3,8 +3,7 @@
 #define IDA_SERVER_DEFAULT_PORT_TEXT "1337"
 #define IDA_SERVER_DEFAULT_PORT 1337
 
-enum server_dbg_notification_t
-{
+enum server_dbg_notification_t {
 	dbg_null = 0,
 
 	// debugger low-level event notifications (see IDD.HPP for details).
@@ -88,10 +87,9 @@ enum server_dbg_notification_t
 #define RESULT_SUCCESS 1
 #define RESULT_FAILED 0
 
-typedef struct _IDA_SERVER_EXCHANGE
-{
+typedef struct _IDA_SERVER_EXCHANGE {
 	unsigned long result;
-	unsigned long notif_code; //server_dbg_notification_t
+	unsigned long notification_code; //server_dbg_notification_t
 	unsigned long ProcessId;
 
 	unsigned char EnablePebBeingDebugged;

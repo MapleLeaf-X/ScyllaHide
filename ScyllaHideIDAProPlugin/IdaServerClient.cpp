@@ -36,8 +36,8 @@ bool SendInjectToServer(unsigned long ProcessId) {
 	return SendEventToServer(inject_dll, ProcessId);
 }
 
-bool SendEventToServer(unsigned long notif_code, unsigned long ProcessId) {
-	idaExchange.notif_code = notif_code;
+bool SendEventToServer(unsigned long notification_code, unsigned long ProcessId) {
+	idaExchange.notification_code = notification_code;
 	idaExchange.ProcessId = ProcessId;
 
 	idaExchange.EnablePebBeingDebugged = g_settings.opts().fixPebBeingDebugged;

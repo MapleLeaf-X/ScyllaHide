@@ -223,7 +223,7 @@ static void handleClient(SOCKET ClientSocket)
         {
             MapSettings();
 
-            switch (idaExchange.notif_code)
+            switch (idaExchange.notification_code)
             {
             case dbg_process_attach:
             {
