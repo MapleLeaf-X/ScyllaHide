@@ -44,22 +44,32 @@ bool SendEventToServer(unsigned long notif_code, unsigned long ProcessId) {
 	idaExchange.EnablePebHeapFlags = g_settings.opts().fixPebHeapFlags;
 	idaExchange.EnablePebNtGlobalFlag = g_settings.opts().fixPebNtGlobalFlag;
 	idaExchange.EnablePebStartupInfo = g_settings.opts().fixPebStartupInfo;
+
 	idaExchange.EnableOutputDebugStringHook = g_settings.opts().hookOutputDebugStringA;
+
 	idaExchange.EnableNtSetInformationThreadHook = g_settings.opts().hookNtSetInformationThread;
-	idaExchange.EnableNtQueryInformationProcessHook = g_settings.opts().hookNtQueryInformationProcess;
 	idaExchange.EnableNtQuerySystemInformationHook = g_settings.opts().hookNtQuerySystemInformation;
+	idaExchange.EnableNtQueryInformationProcessHook = g_settings.opts().hookNtQueryInformationProcess;
+	idaExchange.EnableNtSetInformationProcessHook = g_settings.opts().hookNtSetInformationProcess;
+
 	idaExchange.EnableNtQueryObjectHook = g_settings.opts().hookNtQueryObject;
 	idaExchange.EnableNtYieldExecutionHook = g_settings.opts().hookNtYieldExecution;
 	idaExchange.EnableNtCloseHook = g_settings.opts().hookNtClose;
-	idaExchange.EnableNtCreateThreadExHook = g_settings.opts().hookNtCreateThreadEx;
+	idaExchange.EnableMalwareRunPeUnpacker = g_settings.opts().malwareRunpeUnpacker;
+
 	idaExchange.EnablePreventThreadCreation = g_settings.opts().preventThreadCreation;
+	idaExchange.EnableNtCreateThreadExHook = g_settings.opts().hookNtCreateThreadEx;
 
 	idaExchange.EnableNtGetContextThreadHook = g_settings.opts().hookNtGetContextThread;
 	idaExchange.EnableNtSetContextThreadHook = g_settings.opts().hookNtSetContextThread;
 	idaExchange.EnableNtContinueHook = g_settings.opts().hookNtContinue;
 	idaExchange.EnableKiUserExceptionDispatcherHook = g_settings.opts().hookKiUserExceptionDispatcher;
-	idaExchange.EnableNtSetInformationProcessHook = g_settings.opts().hookNtSetInformationProcess;
-	idaExchange.EnableMalwareRunPeUnpacker = g_settings.opts().malwareRunpeUnpacker;
+
+	idaExchange.EnableNtUserBlockInputHook = g_settings.opts().hookNtUserBlockInput;
+	idaExchange.EnableNtUserQueryWindowHook = g_settings.opts().hookNtUserQueryWindow;
+	idaExchange.EnableNtUserBuildHwndListHook = g_settings.opts().hookNtUserBuildHwndList;
+	idaExchange.EnableNtUserFindWindowExHook = g_settings.opts().hookNtUserFindWindowEx;
+	idaExchange.EnableNtSetDebugFilterStateHook = g_settings.opts().hookNtSetDebugFilterState;
 
 	idaExchange.EnableGetTickCountHook = g_settings.opts().hookGetTickCount;
 	idaExchange.EnableGetTickCount64Hook = g_settings.opts().hookGetTickCount64;
@@ -68,17 +78,11 @@ bool SendEventToServer(unsigned long notif_code, unsigned long ProcessId) {
 	idaExchange.EnableNtQuerySystemTimeHook = g_settings.opts().hookNtQuerySystemTime;
 	idaExchange.EnableNtQueryPerformanceCounterHook = g_settings.opts().hookNtQueryPerformanceCounter;
 
-	idaExchange.EnableNtUserBlockInputHook = g_settings.opts().hookNtUserBlockInput;
-	idaExchange.EnableNtUserFindWindowExHook = g_settings.opts().hookNtUserFindWindowEx;
-	idaExchange.EnableNtUserBuildHwndListHook = g_settings.opts().hookNtUserBuildHwndList;
-	idaExchange.EnableNtUserQueryWindowHook = g_settings.opts().hookNtUserQueryWindow;
-	idaExchange.EnableNtSetDebugFilterStateHook = g_settings.opts().hookNtSetDebugFilterState;
-	idaExchange.DllInjectNormal = g_settings.opts().dllNormal;
 	idaExchange.DllInjectStealth = g_settings.opts().dllStealth;
+	idaExchange.DllInjectNormal = g_settings.opts().dllNormal;
 	idaExchange.UnloadDllAfterInjection = g_settings.opts().dllUnload;
 
 	wcscpy_s(idaExchange.DllPathForInjection, DllPathForInjection);
-
 
 	int iResult = send(serverSock, (char*)&idaExchange, (int)sizeof(IDA_SERVER_EXCHANGE), 0);
 	if(iResult == SOCKET_ERROR) {
