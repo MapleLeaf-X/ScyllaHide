@@ -271,10 +271,8 @@ static void handleClient(SOCKET ClientSocket)
 
             case apply_settings:
             {
-                if(bHooked)
-                {
-                    startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
-                }
+                bHooked = true;
+                startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
                 break;
             }
             case inject_dll:
