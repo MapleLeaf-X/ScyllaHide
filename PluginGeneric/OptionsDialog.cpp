@@ -675,13 +675,14 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 #ifdef __IDP__
 #ifdef BUILD_IDA_64BIT
                 startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
+				bHooked = true;
 #else
                 SendSettingsToServer(ProcessId);
 #endif
 #else
                 startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
+				bHooked = true;
 #endif
-                bHooked = true;
                 MessageBoxW(hDlg, L"Applied changes! Restarting target is NOT necessary!", L"[ScyllaHide Options]", MB_ICONINFORMATION);
             }
             else
