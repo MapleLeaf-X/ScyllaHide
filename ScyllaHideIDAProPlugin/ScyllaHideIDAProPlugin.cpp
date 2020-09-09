@@ -292,10 +292,9 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 	}
 	break;
 
-#ifndef BUILD_IDA_64BIT
 	case dbg_library_unload:
 	{
-		__debugbreak();
+		//__debugbreak();
 		/*if(scl::IsWindows64() && !bHooked) {
 			// Bogus unload event which is actually a load of a native x64 DLL (ntdll, wow64, wow64cpu, wow64win)
 			ReadNtApiInformation(&g_hdd);
@@ -305,7 +304,6 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 		}*/
 	}
 	break;
-#endif
 
 	case dbg_bpt:
 	{
