@@ -1,11 +1,6 @@
 #define USE_STANDARD_FILE_FUNCTIONS
 //#pragma warning(disable : 4996 4512 4127 4201)
 
-//#define BUILD_IDA_64BIT
-
-template <size_t x>
-struct show_size;
-
 //for 64bit - p64
 #ifdef BUILD_IDA_64BIT
 #define __EA64__
@@ -39,28 +34,29 @@ struct show_size;
 #include <algorithm>
 #include <functional>
 
+#include <string>
+#include <utility>
+
 typedef void(__cdecl* t_AttachProcess)(DWORD dwPID);
 
 extern t_AttachProcess _AttachProcess;
 
-const WCHAR g_scyllaHidex86DllFilename[] = L"HookLibraryx86.dll";
-const WCHAR g_scyllaHidex86ServerFilename[] = L"ScyllaHideIDAServerx86.exe";
-const WCHAR g_scyllaHidex86InjectorFilename[] = L"InjectorCLIx86";
-
 #ifdef BUILD_IDA_64BIT
-const WCHAR g_scyllaHidex64DllFilename[] = L"HookLibraryx64.dll";
-const WCHAR g_scyllaHidex64ServerFilename[] = L"ScyllaHideIDAServerx64.exe";
-const WCHAR g_scyllaHidex64InjectorFilename[] = L"InjectorCLIx64";
+const WCHAR g_scyllaHideDllFilename[] = L"HookLibraryx64.dll";
 #endif
+const WCHAR g_scyllaHidex86ServerFilename[] = L"ScyllaHideIDAServerx86.exe";
 
 scl::Settings g_settings;
 scl::Logger g_log;
+#ifdef BUILD_IDA_64BIT
 std::wstring g_scyllaHideDllPath;
+#endif
 std::wstring g_scyllaHideIniPath;
 std::wstring g_scyllaHideServerPath;
-std::wstring g_scyllaHideInjectorPath;
 
+#ifdef BUILD_IDA_64BIT
 HOOK_DLL_DATA g_hdd;
+#endif
 
 //globals
 HINSTANCE hinst;
@@ -70,6 +66,7 @@ HMODULE hNtdllModule = 0;
 PROCESS_INFORMATION ServerProcessInfo = {0};
 STARTUPINFO ServerStartupInfo = {0};
 bool isAttach = false;
+int wow64ready = 0;
 
 static void LogCallback(const char* message) {
 	msg("[%s] %s\n", SCYLLA_HIDE_NAME_A, message);
@@ -111,6 +108,43 @@ static bool SetDebugPrivileges() {
 	return retVal;
 }
 
+static bool StartIdaServer() {
+	if(!scl::FileExistsW(g_scyllaHideServerPath.c_str())) {
+		g_log.LogError(L"Cannot find server executable %s\n", g_scyllaHideServerPath.c_str());
+		return false;
+	}
+
+	DWORD dwRunningStatus = 0;
+	if(ServerProcessInfo.hProcess) {
+		GetExitCodeProcess(ServerProcessInfo.hProcess, &dwRunningStatus);
+	}
+
+	if(dwRunningStatus != STILL_ACTIVE) {
+		if(ServerProcessInfo.hProcess) {
+			CloseHandle(ServerProcessInfo.hProcess);
+			CloseHandle(ServerProcessInfo.hThread);
+		}
+
+		ZeroMemory(&ServerStartupInfo, sizeof(ServerStartupInfo));
+		ZeroMemory(&ServerProcessInfo, sizeof(ServerProcessInfo));
+
+		WCHAR commandline[MAX_PATH * 2] = {0};
+		wcscpy(commandline, g_scyllaHideServerPath.c_str());
+		wcscat(commandline, L" ");
+		wcscat(commandline, g_settings.opts().idaServerPort.c_str());
+		ServerStartupInfo.cb = sizeof(ServerStartupInfo);
+		if(!CreateProcessW(0, commandline, NULL, NULL, FALSE, 0, NULL, NULL, &ServerStartupInfo, &ServerProcessInfo)) {
+			g_log.LogError(L"Cannot start server, error %d", GetLastError());
+			return false;
+		}
+		else {
+			g_log.LogInfo(L"Started IDA Server successfully");
+			return true;
+		}
+	}
+	return false;
+}
+
 //callback for various debug events
 static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_list va) {
 	switch(notification_code) {
@@ -122,12 +156,15 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 	case dbg_process_start:
 	{
 		isAttach = false;
+		wow64ready = 0;
 
 		const debug_event_t* dbgEvent = va_arg(va, const debug_event_t*);
 
 		ProcessId = dbgEvent->pid;
 		bHooked = false;
+#ifdef BUILD_IDA_64BIT
 		ZeroMemory(&g_hdd, sizeof(HOOK_DLL_DATA));
+#endif
 
 		if(dbg != nullptr) {
 			//char text[1000];
@@ -136,94 +173,56 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			// dbg->id DEBUGGER_ID_WINDBG -> 64bit and 32bit
 			// dbg->id DEBUGGER_ID_X86_IA32_WIN32_USER -> 32bit
 
-			if(dbg->is_remote()) {
+			auto connecttoserver = [&] {
 				qstring hoststring;
 				char host[MAX_PATH] = {0};
 				char port[6] = {0};
 				wcstombs(port, g_settings.opts().idaServerPort.c_str(), _countof(port));
 
-				get_process_options(NULL, NULL, NULL, &hoststring, NULL, NULL);
-				GetHost((char*)hoststring.c_str(), host);
-
 				//msg("Host-String: %s\n", hoststring.c_str());
 				//msg("Host: %s\n", host);
 
-#ifdef BUILD_IDA_64BIT
-				//autostart server if necessary
-				if(g_settings.opts().idaAutoStartServer) {
-					if(!scl::FileExistsW(g_scyllaHideServerPath.c_str())) {
-						g_log.LogError(L"Cannot find server executable %s\n", g_scyllaHideServerPath.c_str());
-					}
+				get_process_options(NULL, NULL, NULL, &hoststring, NULL, NULL);
+				GetHost((char*)hoststring.c_str(), host);
 
-					DWORD dwRunningStatus = 0;
-					if(ServerProcessInfo.hProcess) {
-						GetExitCodeProcess(ServerProcessInfo.hProcess, &dwRunningStatus);
-					}
-
-					if(dwRunningStatus != STILL_ACTIVE) {
-						if(ServerProcessInfo.hProcess) {
-							CloseHandle(ServerProcessInfo.hProcess);
-							CloseHandle(ServerProcessInfo.hThread);
-						}
-
-						ZeroMemory(&ServerStartupInfo, sizeof(ServerStartupInfo));
-						ZeroMemory(&ServerProcessInfo, sizeof(ServerProcessInfo));
-
-						WCHAR commandline[MAX_PATH * 2] = {0};
-						wcscpy(commandline, g_scyllaHideServerPath.c_str());
-						wcscat(commandline, L" ");
-						wcscat(commandline, g_settings.opts().idaServerPort.c_str());
-						ServerStartupInfo.cb = sizeof(ServerStartupInfo);
-						if(!CreateProcessW(0, commandline, NULL, NULL, FALSE, 0, NULL, NULL, &ServerStartupInfo, &ServerProcessInfo)) {
-							g_log.LogError(L"Cannot start server, error %d", GetLastError());
-						}
-						else {
-							g_log.LogInfo(L"Started IDA Server successfully");
-						}
-					}
+				if(!ConnectToServer(host, port)) {
+					g_log.LogError(L"Cannot connect to host %s", host);
+					return false;
 				}
-#endif
-				if(ConnectToServer(host, port)) {
+				return true;
+			};
+
+			if(dbg->is_remote()) {
+				if(connecttoserver()) {
 					if(!SendEventToServer(notification_code, ProcessId)) {
 						g_log.LogError(L"SendEventToServer failed");
 					}
 				}
-				else {
-					g_log.LogError(L"Cannot connect to host %s", host);
-				}
 			}
 			else {
+				auto startserver = [&] {
+					if(g_settings.opts().idaAutoStartServer) {
+						StartIdaServer();
+					}
+					connecttoserver();
+				};
 				if(!bHooked) {
 #ifdef BUILD_IDA_64BIT
 					auto hProcess = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, ProcessId);
 					if(hProcess) {
-						if(!scl::IsWow64Process(hProcess)) { // Only apply on native x64 OS, see dbg_library_unload below
+						if(!scl::IsWow64Process(hProcess)) {
 							ReadNtApiInformation(&g_hdd);
 
 							bHooked = true;
 							startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
 						}
 						else {
-							__debugbreak();
+							startserver();
 						}
 						::CloseHandle(hProcess);
 					}
 #else
-					/*bHooked = true;
-
-					ZeroMemory(&ServerStartupInfo, sizeof(ServerStartupInfo));
-					ZeroMemory(&ServerProcessInfo, sizeof(ServerProcessInfo));
-
-					std::wostringstream oss;
-					oss << g_scyllaHideInjectorPath << L" pid:" << ProcessId
-						<< L" \"" << g_scyllaHideDllPath << L"\" nowait";
-					WCHAR commandline[MAX_PATH * 2] = {0};
-					wcscpy(commandline, oss.str().c_str());
-					ServerStartupInfo.cb = sizeof(ServerStartupInfo);
-					if(::CreateProcessW(0, commandline, NULL, NULL, FALSE, 0, NULL, NULL, &ServerStartupInfo, &ServerProcessInfo)) {
-						::CloseHandle(ServerProcessInfo.hProcess);
-						::CloseHandle(ServerProcessInfo.hThread);
-					}*/
+					startserver();
 #endif
 				}
 			}
@@ -233,7 +232,7 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 
 	case dbg_process_exit:
 	{
-		if(!isAttach && dbg->is_remote()) {
+		if(!isAttach && (dbg->is_remote() || !bHooked)) { // wow64ready != 0
 			if(!SendEventToServer(notification_code, ProcessId)) {
 				g_log.LogError(L"SendEventToServer failed");
 			}
@@ -242,63 +241,54 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 		}
 		ProcessId = 0;
 		bHooked = false;
+		wow64ready = 0;
 	}
 	break;
 
 	case dbg_library_load:
 	{
-
 		if(!isAttach) {
-			if(dbg->is_remote()) {
+			auto sendevent = [&] {
 				if(!SendEventToServer(notification_code, ProcessId)) {
 					g_log.LogError(L"SendEventToServer failed");
 				}
+			};
+
+			if(dbg->is_remote()) {
+				sendevent();
 			}
-			else if(bHooked) {
-#ifdef BUILD_IDA_64BIT
-				auto hProcess = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, ProcessId);
-				if(hProcess) {
-					if(!scl::IsWow64Process(hProcess)) {
-						startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
+			else {
+				auto wow64hack = [&] {
+					if(wow64ready == 0) {
+						auto evt = va_arg(va, const debug_event_t*);
+						auto& tmp = evt->modinfo().name;
+						std::string name{&tmp.c_str()[tmp.rfind('\\') + 1]};
+						std::transform(name.begin(), name.end(), name.begin(),
+							std::bind(std::toupper<std::string::value_type>, std::placeholders::_1, std::locale()));
+						if(name == "WOW64CPU.DLL") {
+							wow64ready = 1;
+						}
+					}
+					else if(wow64ready == 1) {
+						wow64ready = 2;
+						SendEventToServer(dbg_process_start, ProcessId); // hack
 					}
 					else {
-						__debugbreak();
+						sendevent();
 					}
-					::CloseHandle(hProcess);
+				};
+#ifdef BUILD_IDA_64BIT
+				if(bHooked) {
+					startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
+				}
+				else {
+					wow64hack();
 				}
 #else
-				//
+				wow64hack();
 #endif
 			}
-#ifndef BUILD_IDA_64BIT
-			else {
-				va_list v;
-				va_copy(v, va);
-				auto evt = va_arg(v, const debug_event_t*);
-				auto& name = evt->modinfo().name;
-				std::string tmp{&name.c_str()[name.rfind('\\') + 1]};
-				std::transform(tmp.begin(), tmp.end(), tmp.begin(),
-					std::bind(std::toupper<std::string::value_type>, std::placeholders::_1, std::locale()));
-				if(tmp == "WOW64CPU.DLL") {
-					ZeroMemory(&ServerStartupInfo, sizeof(ServerStartupInfo));
-					ZeroMemory(&ServerProcessInfo, sizeof(ServerProcessInfo));
-
-					std::wostringstream oss;
-					oss << g_scyllaHideInjectorPath << L" pid:" << ProcessId
-						<< L" \"" << g_scyllaHideDllPath << L"\" nowait";
-					WCHAR commandline[MAX_PATH * 2] = {0};
-					wcscpy(commandline, oss.str().c_str());
-					ServerStartupInfo.cb = sizeof(ServerStartupInfo);
-					if(::CreateProcessW(0, commandline, NULL, NULL, FALSE, 0, NULL, NULL, &ServerStartupInfo, &ServerProcessInfo)) {
-						::CloseHandle(ServerProcessInfo.hProcess);
-						::CloseHandle(ServerProcessInfo.hThread);
-						bHooked = true;
-					}
-				}
-			}
-#endif
 		}
-
 	}
 	break;
 
@@ -306,13 +296,13 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 	case dbg_library_unload:
 	{
 		__debugbreak();
-		if(scl::IsWindows64() && !bHooked) {
+		/*if(scl::IsWindows64() && !bHooked) {
 			// Bogus unload event which is actually a load of a native x64 DLL (ntdll, wow64, wow64cpu, wow64win)
 			ReadNtApiInformation(&g_hdd);
 
 			bHooked = true;
 			startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
-		}
+		}*/
 	}
 	break;
 #endif
@@ -401,13 +391,13 @@ BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD dwReason, LPVOID lpReserved) {
 		hNtdllModule = ::GetModuleHandleW(L"ntdll.dll");
 
 		auto wstrPath = scl::GetModuleFileNameW(hInstDll);
-		wstrPath.erase(wstrPath.rfind(L'\\') + 1);
-		wstrPath.append(L"ScyllaHide\\");
+		wstrPath.replace(wstrPath.rfind(L'\\') + 1, std::wstring::npos, L"ScyllaHide\\");
 
-		g_scyllaHideDllPath = wstrPath + g_scyllaHidex86DllFilename;
+#ifdef BUILD_IDA_64BIT
+		g_scyllaHideDllPath = wstrPath + g_scyllaHideDllFilename;
+#endif
 		g_scyllaHideIniPath = wstrPath + scl::Settings::kFileName;
 		g_scyllaHideServerPath = wstrPath + g_scyllaHidex86ServerFilename;
-		g_scyllaHideInjectorPath = wstrPath + g_scyllaHidex86InjectorFilename;
 
 		auto log_file = wstrPath + scl::Logger::kFileName;
 		g_log.SetLogFile(log_file.c_str());
