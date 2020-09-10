@@ -30,7 +30,7 @@ extern HWND hwmain; // Handle of main OllyDbg window
 #elif OLLY2
 HWND hwmain = hwollymain;
 #elif __IDP__
-HWND hwmain = NULL; // (HWND)callui(ui_get_hwnd).vptr;
+HWND hwmain = (HWND)1; // (HWND)callui(ui_get_hwnd).vptr;
 #elif X64DBG
 extern HWND hwndDlg;
 HWND hwmain;
