@@ -15,7 +15,7 @@ SOCKET serverSock = INVALID_SOCKET;
 WSADATA wsaData;
 
 IDA_SERVER_EXCHANGE idaExchange = {0};
-extern wchar_t DllPathForInjection[MAX_PATH];
+extern char Data[600];
 
 bool StartWinsock() {
 	bool isWinsockUp = true;
@@ -82,7 +82,7 @@ bool SendEventToServer(unsigned long notification_code, unsigned long ProcessId)
 	idaExchange.DllInjectNormal = g_settings.opts().dllNormal;
 	idaExchange.UnloadDllAfterInjection = g_settings.opts().dllUnload;
 
-	wcscpy_s(idaExchange.DllPathForInjection, DllPathForInjection);
+	wcscpy((wchar_t*)idaExchange.Data, (wchar_t*)Data);
 
 	int iResult = send(serverSock, (char*)&idaExchange, (int)sizeof(IDA_SERVER_EXCHANGE), 0);
 	if(iResult == SOCKET_ERROR) {

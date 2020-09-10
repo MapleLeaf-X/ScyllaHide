@@ -54,7 +54,7 @@ extern HWND hwmain;
 
 #elif defined(__IDP__)
 extern HINSTANCE hinst;
-wchar_t DllPathForInjection[MAX_PATH] = {0};
+char Data[600] = {0};
 #endif
 
 void createExceptionWindow(HWND hwnd);
@@ -172,13 +172,20 @@ static void UpdateOptions(HWND hWnd, const scl::Settings* settings) {
 	CheckDlgButton(hWnd, IDC_AUTOSTARTSERVER, opts->idaAutoStartServer);
 	SetDlgItemTextW(hWnd, IDC_SERVERPORT, opts->idaServerPort.c_str());
 
-#ifndef BUILD_IDA_64BIT
+/*#ifndef BUILD_IDA_64BIT
 	EnableWindow(GetDlgItem(hWnd, IDC_AUTOSTARTSERVER), scl::IsWindows64());
 #else
 	EnableWindow(GetDlgItem(hWnd, IDC_AUTOSTARTSERVER), FALSE);
-#endif
+#endif*/
 
-	EnableWindow(GetDlgItem(hWnd, IDC_INJECTDLL), (!!ProcessId));
+	if(ProcessId != 0 && !dbg->is_remote()) {
+		EnableWindow(GetDlgItem(hWnd, IDC_INJECTDLL), TRUE);
+		EnableWindow(GetDlgItem(hWnd, IDC_ATTACH), FALSE);
+	}
+	else {
+		EnableWindow(GetDlgItem(hWnd, IDC_INJECTDLL), FALSE);
+		EnableWindow(GetDlgItem(hWnd, IDC_ATTACH), TRUE);
+	}
 #endif
 
 	UpdateOptionsExceptions(hWnd, settings);
@@ -831,9 +838,14 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 				break;
 
 			if(ProcessId) {
-				if(scl::GetFileDialogW(DllPathForInjection, _countof(DllPathForInjection))) {
+				if(scl::GetFileDialogW((wchar_t*)Data, _countof(Data) / 2)) {
 #ifdef BUILD_IDA_64BIT
-					injectDll(ProcessId, DllPathForInjection);
+					if(!scl::IsWow64Process(nullptr)) {
+						injectDll(ProcessId, (wchar_t*)Data);
+					}
+					else {
+						SendInjectToServer(ProcessId);
+					}
 #else
 					SendInjectToServer(ProcessId);
 #endif

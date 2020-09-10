@@ -133,5 +133,5 @@ typedef struct _IDA_SERVER_EXCHANGE {
 	unsigned char DllInjectStealth;
 	unsigned char DllInjectNormal;
 	unsigned char UnloadDllAfterInjection;
-	wchar_t DllPathForInjection[300];
+	char Data[600];
 } IDA_SERVER_EXCHANGE;

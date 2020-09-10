@@ -30,12 +30,7 @@
 #include "IdaServerClient.h"
 #include "resource.h"
 
-#include <locale>
-#include <algorithm>
-#include <functional>
-
 #include <string>
-#include <utility>
 
 typedef void(__cdecl* t_AttachProcess)(DWORD dwPID);
 
@@ -66,7 +61,6 @@ HMODULE hNtdllModule = 0;
 PROCESS_INFORMATION ServerProcessInfo = {0};
 STARTUPINFO ServerStartupInfo = {0};
 bool isAttach = false;
-int wow64ready = 0;
 
 static void LogCallback(const char* message) {
 	msg("[%s] %s\n", SCYLLA_HIDE_NAME_A, message);
@@ -156,7 +150,6 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 	case dbg_process_start:
 	{
 		isAttach = false;
-		wow64ready = 0;
 
 		const debug_event_t* dbgEvent = va_arg(va, const debug_event_t*);
 
@@ -185,19 +178,18 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 				get_process_options(NULL, NULL, NULL, &hoststring, NULL, NULL);
 				GetHost((char*)hoststring.c_str(), host);
 
-				if(!ConnectToServer(host, port)) {
-					g_log.LogError(L"Cannot connect to host %s", host);
-					return false;
-				}
-				return true;
-			};
-
-			if(dbg->is_remote()) {
-				if(connecttoserver()) {
+				if(ConnectToServer(host, port)) {
 					if(!SendEventToServer(notification_code, ProcessId)) {
 						g_log.LogError(L"SendEventToServer failed");
 					}
 				}
+				else {
+					g_log.LogError(L"Cannot connect to host %s", host);
+				}
+			};
+
+			if(dbg->is_remote()) {
+				connecttoserver();
 			}
 			else {
 				auto startserver = [&] {
@@ -232,7 +224,7 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 
 	case dbg_process_exit:
 	{
-		if(!isAttach && (dbg->is_remote() || !bHooked)) { // wow64ready != 0
+		if(!isAttach && (dbg->is_remote() || !bHooked)) {
 			if(!SendEventToServer(notification_code, ProcessId)) {
 				g_log.LogError(L"SendEventToServer failed");
 			}
@@ -241,7 +233,6 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 		}
 		ProcessId = 0;
 		bHooked = false;
-		wow64ready = 0;
 	}
 	break;
 
@@ -258,34 +249,15 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 				sendevent();
 			}
 			else {
-				auto wow64hack = [&] {
-					if(wow64ready == 0) {
-						auto evt = va_arg(va, const debug_event_t*);
-						auto& tmp = evt->modinfo().name;
-						std::string name{&tmp.c_str()[tmp.rfind('\\') + 1]};
-						std::transform(name.begin(), name.end(), name.begin(),
-							std::bind(std::toupper<std::string::value_type>, std::placeholders::_1, std::locale()));
-						if(name == "WOW64CPU.DLL") {
-							wow64ready = 1;
-						}
-					}
-					else if(wow64ready == 1) {
-						wow64ready = 2;
-						SendEventToServer(dbg_process_start, ProcessId); // hack
-					}
-					else {
-						sendevent();
-					}
-				};
 #ifdef BUILD_IDA_64BIT
 				if(bHooked) {
 					startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
 				}
 				else {
-					wow64hack();
+					sendevent();
 				}
 #else
-				wow64hack();
+				sendevent();
 #endif
 			}
 		}
