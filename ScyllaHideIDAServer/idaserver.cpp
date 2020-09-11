@@ -254,10 +254,14 @@ static void handleClient(SOCKET ClientSocket) {
 					std::string name{idaExchange.Data};
 					std::transform(name.begin(), name.end(), name.begin(),
 						std::bind(std::toupper<std::string::value_type>, std::placeholders::_1, std::locale()));
-					if(name != "KERNEL32.DLL") { //ugly but works all the way from xp to win10
-						break;
+					if(name == "KERNEL32.DLL") { //ugly but works all the way from xp to win10
+						ReadNtApiInformation(&g_hdd);
+
+						bHooked = true;
+						startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
+						wow64ready = 2;
 					}
-					wow64ready = 2;
+					break;
 				}
 #endif
 				if(bHooked) {
