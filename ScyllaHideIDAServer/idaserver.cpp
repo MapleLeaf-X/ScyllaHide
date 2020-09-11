@@ -226,7 +226,7 @@ static void handleClient(SOCKET ClientSocket) {
 				}
 
 #ifndef _WIN64
-				if(!bHooked && wow64ready != 0) {
+				if(!bHooked && wow64ready == 0) {
 #else
 				if(!bHooked) {
 #endif
@@ -254,27 +254,15 @@ static void handleClient(SOCKET ClientSocket) {
 					std::string name{idaExchange.Data};
 					std::transform(name.begin(), name.end(), name.begin(),
 						std::bind(std::toupper<std::string::value_type>, std::placeholders::_1, std::locale()));
-					if(name == "WOW64CPU.DLL") {
-						wow64ready = 2;
+					if(name != "KERNEL32.DLL") { //ugly but works all the way from xp to win10
+						break;
 					}
+					wow64ready = 2;
 				}
-				else if(wow64ready == 2) {
-					wow64ready = 3;
-					ReadNtApiInformation(&g_hdd);
-
-					bHooked = true;
-					startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), true);
-				}
-				else {
-					if(bHooked) {
-						startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
-					}
-				}
-#else
+#endif
 				if(bHooked) {
 					startInjection(ProcessId, &g_hdd, g_scyllaHideDllPath.c_str(), false);
 				}
-#endif
 				break;
 			}
 

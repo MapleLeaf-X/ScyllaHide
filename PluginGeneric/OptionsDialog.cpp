@@ -54,7 +54,7 @@ extern HWND hwmain;
 
 #elif defined(__IDP__)
 extern HINSTANCE hinst;
-char Data[600] = {0};
+extern char Data[600];
 #endif
 
 void createExceptionWindow(HWND hwnd);

@@ -30,8 +30,6 @@
 #include "IdaServerClient.h"
 #include "resource.h"
 
-#include <string>
-
 typedef void(__cdecl* t_AttachProcess)(DWORD dwPID);
 
 extern t_AttachProcess _AttachProcess;
@@ -61,6 +59,7 @@ HMODULE hNtdllModule = 0;
 PROCESS_INFORMATION ServerProcessInfo = {0};
 STARTUPINFO ServerStartupInfo = {0};
 bool isAttach = false;
+char Data[600] = {0};
 
 static void LogCallback(const char* message) {
 	msg("[%s] %s\n", SCYLLA_HIDE_NAME_A, message);
@@ -184,7 +183,7 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 					}
 				}
 				else {
-					g_log.LogError(L"Cannot connect to host %s", host);
+					g_log.LogError(L"Cannot connect to host %s", host); // TODO: fix this ascii/unicode bug
 				}
 			};
 
@@ -240,6 +239,9 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 	{
 		if(!isAttach) {
 			auto sendevent = [&] {
+				auto dbgEvent = va_arg(va, const debug_event_t*);
+				auto& name = dbgEvent->modinfo().name;
+				strcpy_s(Data, &name.c_str()[name.rfind('\\') + 1]);
 				if(!SendEventToServer(notification_code, ProcessId)) {
 					g_log.LogError(L"SendEventToServer failed");
 				}
