@@ -300,7 +300,7 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 
 //cleanup on plugin unload
 static void idaapi IDAP_term(void) {
-	unhook_from_notification_point(HT_DBG, debug_mainloop, NULL);
+	//unhook_from_notification_point(HT_DBG, debug_mainloop, NULL);
 }
 
 //called when user clicks in plugin menu or presses hotkey
@@ -315,10 +315,10 @@ static int idaapi IDAP_init(void) {
 	if(inf.filetype != f_PE) return PLUGIN_SKIP;
 
 	//install hook for debug mainloop
-	if(!hook_to_notification_point(HT_DBG, debug_mainloop, NULL)) {
+	/*if(!hook_to_notification_point(HT_DBG, debug_mainloop, NULL)) {
 		g_log.LogError(L"Error hooking notification point");
 		return PLUGIN_SKIP;
-	}
+	}*/
 
 	msg("##################################################\n");
 	msg("# " SCYLLA_HIDE_NAME_A " v" SCYLLA_HIDE_VERSION_STRING_A " Copyright 2014-" COMPILE_YEAR_A " Aguila / cypher #\n");
@@ -357,7 +357,9 @@ idaman ida_module_data plugin_t PLUGIN =
 };
 
 BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD dwReason, LPVOID lpReserved) {
-	if(dwReason == DLL_PROCESS_ATTACH) {
+	switch(dwReason) {
+	case DLL_PROCESS_ATTACH:
+	{
 		hinst = hInstDll;
 		_AttachProcess = AttachProcess;
 		hNtdllModule = ::GetModuleHandleW(L"ntdll.dll");
@@ -385,6 +387,13 @@ BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD dwReason, LPVOID lpReserved) {
 		if(!StartWinsock()) {
 			MessageBox(nullptr, TEXT("Failed to start Winsock!"), TEXT("Error"), MB_ICONERROR);
 		}
+
+		hook_to_notification_point(HT_DBG, debug_mainloop, NULL);
+		break;
+	}
+	case DLL_PROCESS_DETACH:
+		unhook_from_notification_point(HT_DBG, debug_mainloop, NULL); 
+		break;
 	}
 
 	return TRUE;
