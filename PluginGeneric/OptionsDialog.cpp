@@ -96,8 +96,9 @@ static void UpdateOptions(HWND hWnd, const scl::Settings* settings) {
 	CheckDlgButton(hWnd, IDC_PEBHEAPFLAGS, opts->fixPebHeapFlags);
 	CheckDlgButton(hWnd, IDC_PEBNTGLOBALFLAG, opts->fixPebNtGlobalFlag);
 	CheckDlgButton(hWnd, IDC_PEBSTARTUPINFO, opts->fixPebStartupInfo);
+	CheckDlgButton(hWnd, IDC_PEBOSBUILDNUMBER, opts->fixPebOsBuildNumber);
 
-	BOOL peb_state = opts->fixPebBeingDebugged && opts->fixPebHeapFlags && opts->fixPebNtGlobalFlag && opts->fixPebStartupInfo;
+	BOOL peb_state = opts->fixPebBeingDebugged && opts->fixPebHeapFlags && opts->fixPebNtGlobalFlag && opts->fixPebStartupInfo && opts->fixPebOsBuildNumber;
 	CheckDlgButton(hWnd, IDC_PEB, peb_state);
 
 	CheckDlgButton(hWnd, IDC_NTSETINFORMATIONTHREAD, opts->hookNtSetInformationThread);
@@ -198,6 +199,7 @@ void SaveOptions(HWND hWnd, scl::Settings* settings) {
 	opts->fixPebHeapFlags = (IsDlgButtonChecked(hWnd, IDC_PEBHEAPFLAGS) == BST_CHECKED);
 	opts->fixPebNtGlobalFlag = (IsDlgButtonChecked(hWnd, IDC_PEBNTGLOBALFLAG) == BST_CHECKED);
 	opts->fixPebStartupInfo = (IsDlgButtonChecked(hWnd, IDC_PEBSTARTUPINFO) == BST_CHECKED);
+	opts->fixPebOsBuildNumber = (IsDlgButtonChecked(hWnd, IDC_PEBOSBUILDNUMBER) == BST_CHECKED);
 	opts->hookNtSetInformationThread = (IsDlgButtonChecked(hWnd, IDC_NTSETINFORMATIONTHREAD) == BST_CHECKED);
 	opts->hookNtSetInformationProcess = (IsDlgButtonChecked(hWnd, IDC_NTSETINFORMATIONPROCESS) == BST_CHECKED);
 	opts->hookNtQuerySystemInformation = (IsDlgButtonChecked(hWnd, IDC_NTQUERYSYSTEMINFORMATION) == BST_CHECKED);
@@ -259,219 +261,222 @@ void SaveOptions(HWND hWnd, scl::Settings* settings) {
 	settings->Save();
 }
 
-HWND CreateTooltips(HWND hDlg) {
-	static const struct {
-		unsigned ctrl_id;
-		const wchar_t* text;
-	} ctrl_tips[] = {
-		{ IDOK, L"Apply Settings and close the dialog" },
-		{ IDC_PROFILES, L"Select profile" },
-		{ IDC_SAVEPROFILE, L"Save profile" },
-		{
-			IDC_PEB,
-			L"The most important anti-anti-debug option.\r\n"
-			L"Almost every protector checks for PEB values.\r\n"
-			L"There are three important options and one minor option."
-		},
-		{
-			IDC_PEBBEINGDEBUGGED,
-			L"Very important option, should be always enabled.\r\n"
-			L"IsDebuggerPresent is using this value to check for debuggers."
-		},
-		{ IDC_PEBHEAPFLAGS, L"Very important option, a lot of protectors check for this value." },
-		{ IDC_PEBNTGLOBALFLAG, L"Very important option. E.g. Themida checks for heap artifacts and heap flags." },
-		{ IDC_PEBSTARTUPINFO, L"This is not really important, only a few protectors check for this. Maybe Enigma checks it." },
-		{
-			IDC_NTSETINFORMATIONTHREAD,
-			L"The THREADINFOCLASS value ThreadHideFromDebugger is a well-known\r\n"
-			L"anti-debug measurement. The debugger cannot handle hidden threads.\r\n"
-			L"This leads to a loss of control over the target."
-		},
-		{
-			IDC_NTSETINFORMATIONPROCESS,
-			L"The PROCESSINFOCLASS value ProcessHandleTracing can be used to\r\n"
-			L"detect a debugger. The PROCESSINFOCLASS value ProcessBreakOnTermination\r\n"
-			L"can be used to generate a Blue Screen of Death on process termination."
-		},
-		{
-			IDC_NTQUERYSYSTEMINFORMATION,
-			L"The SYSTEM_INFORMATION_CLASS values SystemKernelDebuggerInformation,\r\n"
-			L"SystemKernelDebuggerInformationEx and SystemKernelDebuggerFlags can be used\r\n"
-			L"to detect kernel debuggers. The SYSTEM_INFORMATION_CLASS values SystemProcessInformation\r\n"
-			L"and SystemExtendedProcessInformation are used to get a process list.\r\n"
-			L"SystemHandleInformation and SystemExtendedHandleInformation are used to\r\n"
-			L"enumerate system process handles to detect e.g. handles to the debuggee process.\r\n"
-			L"The SYSTEM_INFORMATION_CLASS values SystemCodeIntegrityInformation and\r\n"
-			L"SystemCodeIntegrityUnlockInformation can be used to detect test signing mode.\r\n"
-			L"A debugger should be hidden in a process list and the debugee should have a good parent\r\n"
-			L"process ID like the ID from explorer.exe."
-		},
-		{
-			IDC_NTQUERYINFORMATIONPROCESS,
-			L"A very important option. Various PROCESSINFOCLASS values can be used\r\nto detect a debugger.\r\n"
-			L" ProcessDebugFlags: Should return 1 in the supplied buffer.\r\n"
-			L" ProcessDebugPort: Should return 0 in the supplied buffer.\r\n"
-			L" ProcessDebugObjectHandle: Should return 0 in the supplied buffer\r\nand the error STATUS_PORT_NOT_SET(0xC0000353)\r\n"
-			L" ProcessBasicInformation: Reveals the parent process ID.\r\n"
-			L" ProcessBreakOnTermination: Please see NtSetInformationProcess\r\n"
-			L" ProcessHandleTracing: Please see NtSetInformationProcess\r\n"
-			L"A lot of protectors use this to detect debuggers.\r\n"
-			L"The windows API CheckRemoteDebuggerPresent uses NtQueryInformationProcess internally."
-		},
-		{
-			IDC_NTQUERYOBJECT,
-			L"The OBJECT_INFORMATION_CLASS ObjectTypesInformation and ObjectTypeInformation\r\n"
-			L"can be used to detect debuggers. ScyllaHide filters DebugObject references."
-		},
-		{
-			IDC_NTYIELDEXECUTION,
-			L"A very unrealiable anti-debug method. This is only used in some UnpackMe's\r\n"
-			L"or in some Proof of Concept code. Only activate this if you really need it.\r\n"
-			L"Probably you will never need this option."
-		},
-		{
-			IDC_NTCREATETHREADEX,
-			L"Threads hidden from debuggers can be created with a special creation flag\r\n"
-			L"THREAD_CREATE_FLAGS_HIDE_FROM_DEBUGGER. ScyllaHide doesn't\r\n"
-			L"allow hidden threads. The anti-debug effect is similar to NtSetInformationThread"
-		},
-		{
-			IDC_OUTPUTDEBUGSTRINGA,
-			L"OutputDebugStringW uses OutputDebugStringA internally. ScyllaHide only hooks\r\n"
-			L"the ANSI version and this is therefore enough. This is a very unreliable\r\n"
-			L"antidebug method, so you will not need this option very often."
-		},
-		{
-			IDC_NTUSERBLOCKINPUT,
-			L"Very effective anti-debug method. This is used e.g. in Yoda's Protector.\r\n"
-			L"\"Blocks keyboard and mouse input events from reaching applications.\""
-		},
-		{
-			IDC_NTUSERFINDWINDOWEX,
-			L"This is a system call function in user32.dll.\r\n"
-			L"The windows APIs FindWindowA/W and FindWindowExA/W call this internally.\r\n"
-			L"The debugger window will be hidden."
-		},
-		{
-			IDC_NTUSERBUILDHWNDLIST,
-			L"This is a system call function in user32.dll.\r\n"
-			L"The windows APIs EnumWindows and EnumThreadWindows call this internally.\r\n"
-			L"The debugger window will be hidden."
-		},
-		{
-			IDC_NTUSERQUERYWINDOW,
-			L"This is a system call function in user32.dll.\r\n"
-			L"The windows API GetWindowThreadProcessId calls this internally.\r\n"
-			L"This is used to hide the debugger process."
-		},
-		{
-			IDC_NTSETDEBUGFILTERSTATE,
-			L"ScyllaHide returns always STATUS_ACCESS_DENIED.\r\n"
-			L"This anti-debugn measurement isn't used very often.\r\n"
-			L"Probably you will never need this option in a real world target."
-		},
-		{
-			IDC_NTCLOSE,
-			L"This is called with an invalid handle to detect a debugger.\r\n"
-			L"ScyllaHide calls NtQueryObject to check the validity of the handle.\r\n"
-			L"A few protectors are using this method."
-		},
-		{
-			IDC_REMOVEDEBUGPRIV,
-			L"If a debugger creates the process of the target, the target will have debug\r\n"
-			L"privileges. This can be used to detect a debugger."
-		},
-		{
-			IDC_PROTECTDRX,
-			L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
-			L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
-		},
-		{
-			IDC_NTGETCONTEXTTHREAD,
-			L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
-			L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
-		},
-		{
-			IDC_NTSETCONTEXTTHREAD,
-			L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
-			L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
-		},
-		{
-			IDC_NTCONTINUE,
-			L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
-			L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
-		},
-		{
-			IDC_KIUED,
-			L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
-			L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
-		},
-		{
-			IDC_GETTICKCOUNT,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\nand only if you need it!"
-		},
-		{
-			IDC_GETTICKCOUNT64,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\n"
-			L"and only if you need it!"
-		},
-		{
-			IDC_GETLOCALTIME,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\n"
-			L"and only if you need it!"
-		},
-		{
-			IDC_GETSYSTEMTIME,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\n"
-			L"and only if you need it!"
-		},
-		{
-			IDC_NTQUERYSYSTEMTIME,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\n"
-			L"and only if you need it!"
-		},
-		{
-			IDC_NTQUERYPERFCOUNTER,
-			L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
-			L"detect debuggers, because they slow down the execution. Enable with care\r\n"
-			L"and only if you need it!"
-		},
-		{
-			IDC_PREVENTTHREADCREATION,
-			L"This option prevents the creation of new threads. This can be useful if a protector\r\n"
-			L" uses a lot of protection threads. This option can be useful for EXECryptor.\r\n"
-			L"Enable with care and only if you need it!\r\n"
-			L"You must know what you are doing here!"
-		},
-		{
-			IDC_RUNPE,
-			L"This option hooks NtResumeThread. If the malware creates a new process,\r\n"
-			L"ScyllaHide terminates and dumps any newly created process. If you are unpacking\r\n"
-			L"malware, enable and try it. Should be only used inside a VM.\r\n"
-			L"A typical RunPE workflow:\r\n"
-			L" 1. Create a new process of any target in suspended state.\r\n"
-			L"    (Process flag CREATE_SUSPENDED: 0x00000004)\r\n"
-			L" 2. Replace the original process PE image with a new (malicious) PE image.\r\n"
-			L"    This can involve several steps and various windows API functions.\r\n"
-			L" 3. Start the process with the windows API function ResumeThread(or NtResumeThread)."
-		},
-		{
-			IDC_DLLSTEALTH,
-			L"Normal DLL injection or stealth dll injection.\r\n"
-			L"You better try the normal injection first..."
-		},
-		{
-			IDC_DLLNORMAL,
-			L"Normal DLL injection or stealth dll injection.\r\n"
-			L"You better try the normal injection first..."
-		},
-		{ IDC_DLLUNLOAD, L"Unload after DLLMain" },
-		{ IDC_KILLANTIATTACH, L"Kill Anti-Attach" },
+HWND CreateTooltips(HWND hDlg)
+{
+    static const struct
+    {
+        unsigned ctrl_id;
+        const wchar_t *text;
+    } ctrl_tips[] = {
+        { IDOK, L"Apply Settings and close the dialog" },
+        { IDC_PROFILES, L"Select profile" },
+        { IDC_SAVEPROFILE, L"Save profile" },
+        {
+            IDC_PEB,
+            L"The most important anti-anti-debug option.\r\n"
+            L"Almost every protector checks for PEB values.\r\n"
+            L"There are three important options and one minor option."
+        },
+        {
+            IDC_PEBBEINGDEBUGGED,
+            L"Very important option, should be always enabled.\r\n"
+            L"IsDebuggerPresent is using this value to check for debuggers."
+        },
+        { IDC_PEBHEAPFLAGS, L"Very important option, a lot of protectors check for this value." },
+        { IDC_PEBNTGLOBALFLAG, L"Very important option. E.g. Themida checks for heap artifacts and heap flags." },
+        { IDC_PEBSTARTUPINFO, L"This is not really important, only a few protectors check for this. Maybe Enigma checks it." },
+        { IDC_PEBOSBUILDNUMBER, L"VMProtect checks this on newer versions of Windows 10 (2019 onwards)." },
+        {
+            IDC_NTSETINFORMATIONTHREAD,
+            L"The THREADINFOCLASS value ThreadHideFromDebugger is a well-known\r\n"
+            L"anti-debug measurement. The debugger cannot handle hidden threads.\r\n"
+            L"This leads to a loss of control over the target."
+        },
+        {
+            IDC_NTSETINFORMATIONPROCESS,
+            L"The PROCESSINFOCLASS value ProcessHandleTracing can be used to\r\n"
+            L"detect a debugger. The PROCESSINFOCLASS value ProcessBreakOnTermination\r\n"
+            L"can be used to generate a Blue Screen of Death on process termination."
+        },
+        {
+            IDC_NTQUERYSYSTEMINFORMATION,
+            L"The SYSTEM_INFORMATION_CLASS values SystemKernelDebuggerInformation,\r\n"
+            L"SystemKernelDebuggerInformationEx and SystemKernelDebuggerFlags can be used\r\n"
+            L"to detect kernel debuggers. The SYSTEM_INFORMATION_CLASS values SystemProcessInformation\r\n"
+            L"and SystemExtendedProcessInformation are used to get a process list.\r\n"
+            L"SystemHandleInformation and SystemExtendedHandleInformation are used to\r\n"
+            L"enumerate system process handles to detect e.g. handles to the debuggee process.\r\n"
+            L"The SYSTEM_INFORMATION_CLASS values SystemCodeIntegrityInformation and\r\n"
+            L"SystemCodeIntegrityUnlockInformation can be used to detect test signing mode.\r\n"
+            L"A debugger should be hidden in a process list and the debugee should have a good parent\r\n"
+            L"process ID like the ID from explorer.exe."
+        },
+        {
+            IDC_NTQUERYINFORMATIONPROCESS,
+            L"A very important option. Various PROCESSINFOCLASS values can be used\r\nto detect a debugger.\r\n"
+            L" ProcessDebugFlags: Should return 1 in the supplied buffer.\r\n"
+            L" ProcessDebugPort: Should return 0 in the supplied buffer.\r\n"
+            L" ProcessDebugObjectHandle: Should return 0 in the supplied buffer\r\nand the error STATUS_PORT_NOT_SET(0xC0000353)\r\n"
+            L" ProcessBasicInformation: Reveals the parent process ID.\r\n"
+            L" ProcessBreakOnTermination: Please see NtSetInformationProcess\r\n"
+            L" ProcessHandleTracing: Please see NtSetInformationProcess\r\n"
+            L"A lot of protectors use this to detect debuggers.\r\n"
+            L"The windows API CheckRemoteDebuggerPresent uses NtQueryInformationProcess internally."
+        },
+        {
+            IDC_NTQUERYOBJECT,
+            L"The OBJECT_INFORMATION_CLASS ObjectTypesInformation and ObjectTypeInformation\r\n"
+            L"can be used to detect debuggers. ScyllaHide filters DebugObject references."
+        },
+        {
+            IDC_NTYIELDEXECUTION,
+            L"A very unrealiable anti-debug method. This is only used in some UnpackMe's\r\n"
+            L"or in some Proof of Concept code. Only activate this if you really need it.\r\n"
+            L"Probably you will never need this option."
+        },
+        {
+            IDC_NTCREATETHREADEX,
+            L"Threads hidden from debuggers can be created with a special creation flag\r\n"
+            L"THREAD_CREATE_FLAGS_HIDE_FROM_DEBUGGER. ScyllaHide doesn't\r\n"
+            L"allow hidden threads. The anti-debug effect is similar to NtSetInformationThread"
+        },
+        {
+            IDC_OUTPUTDEBUGSTRINGA,
+            L"OutputDebugStringW uses OutputDebugStringA internally. ScyllaHide only hooks\r\n"
+            L"the ANSI version and this is therefore enough. This is a very unreliable\r\n"
+            L"antidebug method, so you will not need this option very often."
+        },
+        {
+            IDC_NTUSERBLOCKINPUT,
+            L"Very effective anti-debug method. This is used e.g. in Yoda's Protector.\r\n"
+            L"\"Blocks keyboard and mouse input events from reaching applications.\""
+        },
+        {
+            IDC_NTUSERFINDWINDOWEX,
+            L"This is a system call function in user32.dll.\r\n"
+            L"The windows APIs FindWindowA/W and FindWindowExA/W call this internally.\r\n"
+            L"The debugger window will be hidden."
+        },
+        {
+            IDC_NTUSERBUILDHWNDLIST,
+            L"This is a system call function in user32.dll.\r\n"
+            L"The windows APIs EnumWindows and EnumThreadWindows call this internally.\r\n"
+            L"The debugger window will be hidden."
+        },
+        {
+            IDC_NTUSERQUERYWINDOW,
+            L"This is a system call function in user32.dll.\r\n"
+            L"The windows API GetWindowThreadProcessId calls this internally.\r\n"
+            L"This is used to hide the debugger process."
+        },
+        {
+            IDC_NTSETDEBUGFILTERSTATE,
+            L"ScyllaHide returns always STATUS_ACCESS_DENIED.\r\n"
+            L"This anti-debugn measurement isn't used very often.\r\n"
+            L"Probably you will never need this option in a real world target."
+        },
+        {
+            IDC_NTCLOSE,
+            L"This is called with an invalid handle to detect a debugger.\r\n"
+            L"ScyllaHide calls NtQueryObject to check the validity of the handle.\r\n"
+            L"A few protectors are using this method."
+        },
+        {
+            IDC_REMOVEDEBUGPRIV,
+            L"If a debugger creates the process of the target, the target will have debug\r\n"
+            L"privileges. This can be used to detect a debugger."
+        },
+        {
+            IDC_PROTECTDRX,
+            L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
+            L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
+        },
+        {
+            IDC_NTGETCONTEXTTHREAD,
+            L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
+            L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
+        },
+        {
+            IDC_NTSETCONTEXTTHREAD,
+            L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
+            L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
+        },
+        {
+            IDC_NTCONTINUE,
+            L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
+            L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
+        },
+        {
+            IDC_KIUED,
+            L"Hardware breakpoints can be detected/cleared with exceptions or the windows\r\n"
+            L"APIs NtGetContextThread/NtSetContextThread. Enable this option only if you need it!"
+        },
+        {
+            IDC_GETTICKCOUNT,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\nand only if you need it!"
+        },
+        {
+            IDC_GETTICKCOUNT64,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\n"
+            L"and only if you need it!"
+        },
+        {
+            IDC_GETLOCALTIME,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\n"
+            L"and only if you need it!"
+        },
+        {
+            IDC_GETSYSTEMTIME,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\n"
+            L"and only if you need it!"
+        },
+        {
+            IDC_NTQUERYSYSTEMTIME,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\n"
+            L"and only if you need it!"
+        },
+        {
+            IDC_NTQUERYPERFCOUNTER,
+            L"There are a few windows APIs to measure the time. Timing can be used to\r\n"
+            L"detect debuggers, because they slow down the execution. Enable with care\r\n"
+            L"and only if you need it!"
+        },
+        {
+            IDC_PREVENTTHREADCREATION,
+            L"This option prevents the creation of new threads. This can be useful if a protector\r\n"
+            L" uses a lot of protection threads. This option can be useful for EXECryptor.\r\n"
+            L"Enable with care and only if you need it!\r\n"
+            L"You must know what you are doing here!"
+        },
+        {
+            IDC_RUNPE,
+            L"This option hooks NtResumeThread. If the malware creates a new process,\r\n"
+            L"ScyllaHide terminates and dumps any newly created process. If you are unpacking\r\n"
+            L"malware, enable and try it. Should be only used inside a VM.\r\n"
+            L"A typical RunPE workflow:\r\n"
+            L" 1. Create a new process of any target in suspended state.\r\n"
+            L"    (Process flag CREATE_SUSPENDED: 0x00000004)\r\n"
+            L" 2. Replace the original process PE image with a new (malicious) PE image.\r\n"
+            L"    This can involve several steps and various windows API functions.\r\n"
+            L" 3. Start the process with the windows API function ResumeThread(or NtResumeThread)."
+        },
+        {
+            IDC_DLLSTEALTH,
+            L"Normal DLL injection or stealth dll injection.\r\n"
+            L"You better try the normal injection first..."
+        },
+        {
+            IDC_DLLNORMAL,
+            L"Normal DLL injection or stealth dll injection.\r\n"
+            L"You better try the normal injection first..."
+        },
+        { IDC_DLLUNLOAD, L"Unload after DLLMain" },
+        { IDC_KILLANTIATTACH, L"Kill Anti-Attach" },
 #ifdef OLLY1
 			{ IDC_OLLYTITLE, L"Olly caption" },
 			{
@@ -761,6 +766,7 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			CheckDlgButton(hDlg, IDC_PEBHEAPFLAGS, state);
 			CheckDlgButton(hDlg, IDC_PEBNTGLOBALFLAG, state);
 			CheckDlgButton(hDlg, IDC_PEBSTARTUPINFO, state);
+			CheckDlgButton(hDlg, IDC_PEBOSBUILDNUMBER, state);
 			break;
 		}
 
@@ -768,6 +774,7 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 		case IDC_PEBHEAPFLAGS:
 		case IDC_PEBNTGLOBALFLAG:
 		case IDC_PEBSTARTUPINFO:
+		case IDC_PEBOSBUILDNUMBER:
 		{
 			if(HIWORD(wParam) != BN_CLICKED)
 				break;
@@ -775,7 +782,8 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			auto checked = IsDlgButtonChecked(hDlg, IDC_PEBBEINGDEBUGGED)
 				|| IsDlgButtonChecked(hDlg, IDC_PEBHEAPFLAGS)
 				|| IsDlgButtonChecked(hDlg, IDC_PEBNTGLOBALFLAG)
-				|| IsDlgButtonChecked(hDlg, IDC_PEBSTARTUPINFO);
+				|| IsDlgButtonChecked(hDlg, IDC_PEBSTARTUPINFO)
+				|| IsDlgButtonChecked(hDlg, IDC_PEBOSBUILDNUMBER);
 
 			CheckDlgButton(hDlg, IDC_PEB, checked);
 			break;

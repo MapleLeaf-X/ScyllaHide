@@ -44,6 +44,7 @@ bool SendEventToServer(unsigned long notification_code, unsigned long ProcessId)
 	idaExchange.EnablePebHeapFlags = g_settings.opts().fixPebHeapFlags;
 	idaExchange.EnablePebNtGlobalFlag = g_settings.opts().fixPebNtGlobalFlag;
 	idaExchange.EnablePebStartupInfo = g_settings.opts().fixPebStartupInfo;
+	idaExchange.EnablePebOsBuildNumber = g_settings.opts().fixPebOsBuildNumber;
 
 	idaExchange.EnableOutputDebugStringHook = g_settings.opts().hookOutputDebugStringA;
 
