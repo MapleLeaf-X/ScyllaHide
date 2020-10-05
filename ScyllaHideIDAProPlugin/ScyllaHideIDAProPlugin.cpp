@@ -165,17 +165,9 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			// dbg->id DEBUGGER_ID_WINDBG -> 64bit and 32bit
 			// dbg->id DEBUGGER_ID_X86_IA32_WIN32_USER -> 32bit
 
-			auto connecttoserver = [&] {
-				qstring hoststring;
-				char host[MAX_PATH] = {0};
+			auto connecttoserver = [&](const char* host) {
 				char port[6] = {0};
 				wcstombs(port, g_settings.opts().idaServerPort.c_str(), _countof(port));
-
-				//msg("Host-String: %s\n", hoststring.c_str());
-				//msg("Host: %s\n", host);
-
-				get_process_options(NULL, NULL, NULL, &hoststring, NULL, NULL);
-				GetHost((char*)hoststring.c_str(), host);
 
 				if(ConnectToServer(host, port)) {
 					if(!SendEventToServer(notification_code, ProcessId)) {
@@ -188,14 +180,23 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			};
 
 			if(dbg->is_remote()) {
-				connecttoserver();
+				qstring hoststring;
+				char host[MAX_PATH] = {0};
+
+				//msg("Host-String: %s\n", hoststring.c_str());
+				//msg("Host: %s\n", host);
+
+				get_process_options(NULL, NULL, NULL, &hoststring, NULL, NULL);
+				GetHost((char*)hoststring.c_str(), host);
+
+				connecttoserver(host);
 			}
 			else {
 				auto startserver = [&] {
 					if(g_settings.opts().idaAutoStartServer) {
 						StartIdaServer();
 					}
-					connecttoserver();
+					connecttoserver("127.0.0.1");
 				};
 				if(!bHooked) {
 #ifdef BUILD_IDA_64BIT
