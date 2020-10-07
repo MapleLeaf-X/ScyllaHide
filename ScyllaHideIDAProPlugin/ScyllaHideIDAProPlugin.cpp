@@ -165,11 +165,13 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			// dbg->id DEBUGGER_ID_WINDBG -> 64bit and 32bit
 			// dbg->id DEBUGGER_ID_X86_IA32_WIN32_USER -> 32bit
 
-			auto connecttoserver = [&](const char* host) {
+			auto tryconnect = [](const char* host) {
 				char port[6] = {0};
 				wcstombs(port, g_settings.opts().idaServerPort.c_str(), _countof(port));
-
-				if(ConnectToServer(host, port)) {
+				return ConnectToServer(host, port);
+			};
+			auto connecttoserver = [&](const char* host) {
+				if(tryconnect(host)) {
 					if(!SendEventToServer(notification_code, ProcessId)) {
 						g_log.LogError(L"SendEventToServer failed");
 					}
@@ -193,10 +195,12 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			}
 			else {
 				auto startserver = [&] {
-					if(g_settings.opts().idaAutoStartServer) {
-						StartIdaServer();
+					if(!tryconnect("127.0.0.1")) {
+						if(g_settings.opts().idaAutoStartServer) {
+							StartIdaServer();
+							tryconnect("127.0.0.1");
+						}
 					}
-					connecttoserver("127.0.0.1");
 				};
 				if(!bHooked) {
 #ifdef BUILD_IDA_64BIT
