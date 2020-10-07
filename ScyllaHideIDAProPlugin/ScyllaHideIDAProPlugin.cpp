@@ -198,11 +198,11 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			else {
 				auto startserver = [&] {
 					if(!connecttoserver("127.0.0.1")) {
-						//if(g_settings.opts().idaAutoStartServer) {
+						if(g_settings.opts().idaAutoStartServer) {
 							if(StartIdaServer()) {
 								connecttoserver("127.0.0.1");
 							}
-						//}
+						}
 					}
 				};
 				if(!bHooked) {
