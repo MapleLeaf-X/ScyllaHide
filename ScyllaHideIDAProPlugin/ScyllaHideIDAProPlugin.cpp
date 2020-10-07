@@ -165,20 +165,22 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			// dbg->id DEBUGGER_ID_WINDBG -> 64bit and 32bit
 			// dbg->id DEBUGGER_ID_X86_IA32_WIN32_USER -> 32bit
 
-			auto tryconnect = [](const char* host) {
+			auto connecttoserver = [&](const char* host) {
 				char port[6] = {0};
 				wcstombs(port, g_settings.opts().idaServerPort.c_str(), _countof(port));
-				return ConnectToServer(host, port);
-			};
-			auto connecttoserver = [&](const char* host) {
-				if(tryconnect(host)) {
+
+				if(ConnectToServer(host, port)) {
 					if(!SendEventToServer(notification_code, ProcessId)) {
 						g_log.LogError(L"SendEventToServer failed");
+					}
+					else {
+						return true;
 					}
 				}
 				else {
 					g_log.LogError(L"Cannot connect to host %s", host); // TODO: fix this ascii/unicode bug
 				}
+				return false;
 			};
 
 			if(dbg->is_remote()) {
@@ -195,11 +197,12 @@ static ssize_t idaapi debug_mainloop(void* user_data, int notification_code, va_
 			}
 			else {
 				auto startserver = [&] {
-					if(!tryconnect("127.0.0.1")) {
-						if(g_settings.opts().idaAutoStartServer) {
-							StartIdaServer();
-							tryconnect("127.0.0.1");
-						}
+					if(!connecttoserver("127.0.0.1")) {
+						//if(g_settings.opts().idaAutoStartServer) {
+							if(StartIdaServer()) {
+								connecttoserver("127.0.0.1");
+							}
+						//}
 					}
 				};
 				if(!bHooked) {
